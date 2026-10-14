@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>REEVA | Transform your forgotten clothes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+
+<header class="nav">
+
+  <!-- LOGO -->
+  <a href="#home" class="logo">
+    <img src="Imagenes/LogoReeva.png" alt="REEVA">
+  </a>
+
+  <!-- MENU -->
+  <nav id="menu">
+    <a href="#home" data-link="home">Home</a>
+    <a href="#centers" data-link="centers">Collections Centers</a>
+    <a href="#about" data-link="about">About REEVA</a>
+    <a href="#marketplace" data-link="marketplace">Marketplace</a>
+    <a href="#blog" data-link="blog">Blog</a>
+  </nav>
+
+  <!-- ICONOS -->
+  <div class="nav-icons">
+
+    <!-- PERFIL -->
+    <button id="btn-login" aria-label="Log in">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="8" r="4"></circle>
+        <path d="M4 21c.8-4 3.4-6 8-6s7.2 2 8 6"></path>
+      </svg>
+    </button>
+
+    <!-- CARRITO -->
+    <button id="btn-cart" aria-label="Cart">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 1.9-1.4L21 8H6"></path>
+        <circle cx="10" cy="20" r="1"></circle>
+        <circle cx="18" cy="20" r="1"></circle>
+      </svg>
+      <span id="cart-count">0</span>
+    </button>
+
+  </div>
+
+  <!-- MENU MOVIL -->
+  <button id="burger" aria-label="Menu">&#9776;</button>
+
+</header>
+
+
+<main>
+<!-- ============ HOME ============ -->
+<section class="view" id="home">
+  <div class="hero">
+    <div class="hero-text">
+      <h1 class="rv" style="--d:.15s">Transform your forgotten clothes</h1>
+      <p class="rv" style="--d:.45s">REEVA connects people, local talent, and sustainable fashion to give every garment a second life.</p>
+      <div class="rv" style="--d:.7s"><a class="btn" href="#marketplace">Explore Marketplace</a>
+      <a class="btn btn-outline" href="#centers">Collections Centers</a></div>
+    </div>
+    <!-- IMAGE: hero -->
+    <img class="hero-img rv" src="Imagenes/women-wearing-clothes.png" alt="Models wearing upcycled clothing">
+    <!-- SELLO GIRATORIO -->
+    <div class="badge" aria-hidden="true"><svg viewBox="0 0 120 120"><defs><path id="bc" d="M60,60 m-44,0 a44,44 0 1,1 88,0 a44,44 0 1,1 -88,0"/></defs><text><textPath href="#bc" textLength="268" lengthAdjust="spacing">WHERE EVERY GARMENT TELLS A NEW STORY ✦</textPath></text></svg><span>✦</span></div>
+  </div>
+
+  <!-- CINTA EN MOVIMIENTO -->
+  <div class="ticker" aria-hidden="true"><div class="ticker-track"><span>Where Every Garment Tells a New Story</span><i>✦</i><span>Transform your forgotten clothes</span><i>✦</i><span>Give every garment a second life</span><i>✦</i><span>Where Every Garment Tells a New Story</span><i>✦</i><span>Transform your forgotten clothes</span><i>✦</i><span>Give every garment a second life</span><i>✦</i></div></div>
+
+  <!-- THE IMPACT OF FASHION: para cambiar los numeros edita data-count -->
+  <div class="wrap impact">
+    <h2 class="rv">The Impact of Fashion</h2>
+    <div class="rv" style="--d:.15s"><div class="big"><span data-count="85">0</span>%</div><p class="cap">Percentage of clothing that ends up in landfills.</p></div>
+    <p class="lead rv" style="--d:.1s">The textile industry is the most polluting on the planet. Every year, 92 million tons of textile waste pile up, creating a global environmental crisis that needs an urgent response.</p>
+    <div class="rv" style="--d:.3s"><div class="big" data-count="500">0</div><p class="cap">Emerging designers we support through REEVA.</p></div>
+  </div>
+
+  <div class="banner reveal">
+      <!-- IMAGE: textile waste -->
+      <img src="Imagenes/trash-pile.jpg" alt="Textile waste">
+      <div class="banner-num rv rv-right" id="bnum" style="--d:.25s">92<br>million</div>
+      <p class="banner-cap">Tons of textile waste generated every year.</p>
+  </div>
+
+  <div class="wrap solution">
+    <div class="rv">
+      <h2 class="red">Our Solution</h2>
+      <p class="red small">REEVA connects donors, emerging designers, and conscious buyers, driving a circular economy where every garment tells a new story.</p>
+    </div>
+    <!-- IMAGE: team -->
+    <img class="rv rv-right" src="Imagenes/reeva-team.png" alt="REEVA team">
+  </div>
+
+  <div class="steps-band">
+    <div class="wrap steps-head rv"><h2>How It Works</h2><p class="small">A process designed to close the fashion loop and give new life to every garment.</p></div>
+    <div class="wrap steps">
+      <div class="rv" style="--d:.1s"><span>01</span><h4>Donation</h4><p>Send your forgotten clothes to our collection centers to start your new story.</p></div>
+      <div class="rv" style="--d:.25s"><span>02</span><h4>Transformation</h4><p>Emerging designers reimagine each garment using artisanal upcycling techniques.</p></div>
+      <div class="rv" style="--d:.4s"><span>03</span><h4>Post</h4><p>Each piece is documented with its story and shared on our digital platform.</p></div>
+      <div class="rv" style="--d:.55s"><span>04</span><h4>Purchase</h4><p>Find your new piece with a story and support our sustainable mission.</p></div>
+    </div>
+  </div>
+
+  <div class="wrap env">
+    <h2 class="rv">Environmental Impact</h2>
+    <p class="small">REEVA measures change through action. Every transformed garment prevents a significant impact on the planet.</p>
+    <div class="stats">
+      <div class="rv" style="--d:.1s"><h4>Recovered Kilograms</h4><div class="big sm"><span data-count="12500" data-sep="1">0</span> kg</div><p class="small">Textiles saved from landfills and local recycling processes.</p></div>
+      <div class="rv" style="--d:.25s"><h4>Garments Transformed</h4><div class="big sm"><span data-count="450">0</span> garments</div><p class="small">Unique creations designed to give clothes a second life.</p></div>
+      <div class="rv" style="--d:.4s"><h4>Emissions Avoided</h4><div class="big sm"><span data-count="12.5" data-dec="1">0</span> T CO<sub>2</sub></div><p class="small">Positive climate impact by avoiding the production of new garments.</p></div>
+    </div>
+  </div>
+
+  <div class="wrap partners">
+    <h2 class="rv">Our Partners</h2>
+    <p class="small">We drive sustainable innovation through collaboration with leading institutions in education and environmental conservation.</p>
+    <div class="allies">
+      <!-- IMAGES: inadeh, up, centros, ambiental -->
+      <article class="rv rv-right" style="--d:.0s"><div class="logo-box"><img src="Imagenes/inadeh-logo.png" alt="INADEH"></div><h4>INADEH</h4><p class="small">An institution dedicated to the technical and professional training of young talent in the fashion sector.</p></article>
+      <article class="rv rv-right" style="--d:.2s"><div class="logo-box"><img src="Imagenes/university-logo.png" alt="University of Panama"></div><h4>University of Panama</h4><p class="small">A center of academic excellence driving innovation and social commitment through education.</p></article>
+      <article class="rv rv-up" style="--d:.0s"><img class="photo" src="Imagenes/centros-comunitarios.png" alt="Community centers"><h4>Community Centers</h4><p class="small">Local allies committed to the circular economy and the reuse of textile materials.</p></article>
+      <article class="rv rv-up" style="--d:.2s"><img class="photo" src="Imagenes/up-outside.png" alt="Environmental organizations"><h4>Environmental Organizations</h4><p class="small">Partners in protecting the environment and reducing industrial textile waste.</p></article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ COLLECTION CENTERS ============ -->
+<section class="view" id="centers">
+  <div class="wrap">
+
+    <h1 class="red">Collection Centers</h1>
+
+    <p class="small narrow">
+      Join our recycling network. Find the nearest collection points and help give a second life to the clothes you no longer use.
+    </p>
+
+    <div class="map-wrap">
+      <iframe
+        src="https://www.google.com/maps/d/embed?mid=1VWFBs6OYHxvnWH9IhHTH8HPz6pbaVGU&amp;ehbc=2E312F"
+        width="100%"
+        height="550"
+        style="border:0; display:block;"
+        loading="lazy"
+        allowfullscreen>
+      </iframe>
+    </div>
+
+    <div class="two info">
+
+      <div>
+        <h4>Opening Hours</h4>
+        <p class="small">
+          Monday to Friday: 09:00 — 18:00<br>
+          Saturdays: 09:00 — 13:00
+        </p>
+      </div>
+
+      <div>
+        <h4>Clothing Pickup</h4>
+        <p class="small">
+          Clothes in good condition<br>
+          Occasional-use clothing<br>
+          Textile accessories
+        </p>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ ABOUT ============ -->
+<section class="view" id="about">
+  <div class="wrap mission">
+    <div class="rv" style="--d:.2s">
+      <h2>Our Mission</h2>
+      <p class="small">We empower local talent while transforming environmental impact. At REEVA, we connect donors, emerging designers, and conscious consumers to give every garment a second life.</p>
+    </div>
+    <!-- IMAGE: mission -->
+    <img class="rv rv-right" src="Imagenes/women-sewing.jpg" alt="Artisan at work">
+  </div>
+  <div class="wrap values">
+    <div class="rv">
+      <h2>Our Values</h2>
+      <p class="small">REEVA is a movement driven by sustainability, innovation, and inclusion. Our mission is to transform the environmental impact of the textile industry through the circular economy.</p>
+    </div>
+    <div class="values-grid">
+      <div class="rv" style="--d:.1s"><h4>Sustainability</h4><p class="small">We reduce environmental impact by connecting donors with conscious buyers, giving every garment a second life.</p></div>
+      <div class="rv" style="--d:.25s"><h4>Innovation</h4><p class="small">We boost local talent through upcycling techniques that turn textile materials into unique, high-quality pieces.</p></div>
+      <div class="rv" style="--d:.4s"><h4>Inclusion</h4><p class="small">We foster a community committed to the planet, connecting people who donate with conscious buyers.</p></div>
+      <div class="rv" style="--d:.55s"><h4>Circular Economy</h4><p class="small">We drive a business model that prioritizes reuse and the circular economy for a more sustainable future.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MARKETPLACE ============ -->
+<section class="view" id="marketplace">
+  <div class="wrap">
+    <div id="mk-list">
+      <p class="crumbs">Home &nbsp;›&nbsp; All Products</p>
+      <img class="mk-banner" src="Imagenes/banner-shop.jpg" alt="REEVA Marketplace">
+      <h2>All Products</h2>
+      <div class="chips" id="chips"></div>
+      <div class="toolbar"><span id="count"></span>
+        <label>Sort by: <select id="sort">
+          <option value="rec">Recommended</option>
+          <option value="new">Newest</option>
+          <option value="asc">Price: low to high</option>
+          <option value="desc">Price: high to low</option>
+          <option value="az">Name: A–Z</option>
+          <option value="za">Name: Z–A</option>
+        </select></label>
+      </div>
+      <div class="grid" id="grid"></div>
+    </div>
+    <div id="mk-detail" hidden></div>
+  </div>
+</section>
+
+<!-- ============ BLOG ============ -->
+<section class="view" id="blog">
+  <div class="wrap narrow2">
+    <div id="blog-list">
+      <p class="crumbs red">All Posts</p>
+      <div class="grid3" id="posts"></div>
+    </div>
+    <article id="blog-post" hidden>
+      <a href="#blog" class="crumbs red" data-back>All Posts</a>
+      <div class="post-card">
+        <p class="meta" id="post-meta"></p>
+        <h2 id="post-title"></h2>
+        <div id="post-body"></div>
+        <hr>
+        <h4>Comments</h4>
+        <textarea id="comment" placeholder="Write a comment..." rows="1"></textarea>
+        <div class="c-actions" id="c-actions" hidden><span class="small"><a href="#" data-login>Log in</a> to post as a member</span><span><button class="link" id="c-cancel">Cancel</button><button class="btn" id="c-post">Post</button></span></div>
+      </div>
+    </article>
+  </div>
+</section>
+</main>
+
+<footer class="footer">
+  <div class="wrap foot">
+    <div><img src="Imagenes/LogoReeva.png" alt="REEVA" class="flogo"><p class="small">REEVA connects people, emerging designers, and sustainable fashion to give every garment a second life.</p></div>
+    <div><h4>CONTACT</h4><p class="small">contacto@reeva.pa<br>+507 8000-0000<br>123 Innovation Street, Panama City</p></div>
+    <div><h4>FOLLOW US</h4><p class="social"><a href="#" aria-label="Facebook" style="background:#1877f2">f</a><a href="#" aria-label="Instagram" style="background:#e1306c">ig</a><a href="#" aria-label="YouTube" style="background:#e00">▶</a><a href="#" aria-label="X" style="background:#000">X</a><a href="#" aria-label="LinkedIn" style="background:#0a66c2">in</a><a href="#" aria-label="TikTok" style="background:#000">♪</a></p></div>
+  </div>
+  <div class="foot-bottom"><span>© 2026 REEVA. All rights reserved.</span><span>Where Every Garment Tells a New Story.</span></div>
+</footer>
+
+<!-- CART DRAWER -->
+<div class="overlay" id="overlay"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="d-head"><h4>Cart <span id="d-items"></span></h4><button id="d-close" aria-label="Close">✕</button></div>
+  <div id="d-body"></div>
+  <div class="d-foot">
+    <p class="red small">🏷 Enter promo code</p>
+    <p class="total"><span>Estimated total</span><b id="d-total">B/. 0.00</b></p>
+    <p class="tiny">Taxes and shipping costs are calculated at checkout.</p>
+    <button class="btn full" id="d-checkout">Checkout</button>
+    <button class="btn btn-outline full" id="d-view">View cart</button>
+  </div>
+</aside>
+
+<!-- LOGIN / SIGN UP: la ventana la crea script.js automáticamente -->
+
+<!-- CHECKOUT -->
+<section class="checkout" id="checkout" hidden>
+  <header><b>CHECKOUT</b><a href="#" id="co-back">Continue browsing</a></header>
+  <div class="co-body">
+    <div class="co-msg"><div class="x">⊗</div><h3>We can't accept online payments</h3><p class="small">Contact us and we'll help you with your order.</p></div>
+    <div class="co-sum"><h4>Order summary</h4><div id="co-items"></div>
+      <p class="line"><span>Subtotal</span><span id="co-sub"></span></p><p class="line"><span>Delivery</span><span>Free</span></p><p class="line t"><span>Total</span><span id="co-tot"></span></p></div>
+  </div>
+</section>
+
+<script src="script.js"></script>
+</body>
+</html>
