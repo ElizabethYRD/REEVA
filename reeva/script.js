@@ -1,3 +1,28 @@
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+    updateProfile,
+  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut
+} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDpBhZW9L8hKYwFR9kJycRSbi6nadZPJ9c",
+  authDomain: "reeva-9b01f.firebaseapp.com",
+  projectId: "reeva-9b01f",
+  storageBucket: "reeva-9b01f.firebasestorage.app",
+  messagingSenderId: "574458340001",
+  appId: "1:574458340001:web:572bffafb007be40fd86e0"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
 /* Si algo falla en el JavaScript, muestra el error en una franja roja arriba de la página */
 window.addEventListener('error',e=>{
   if(e.target&&e.target!==window)return;
@@ -219,160 +244,449 @@ function openCheckout(){
 }
 $('#co-back').onclick=e=>{e.preventDefault();$('#checkout').hidden=true};
 
+
 /* ---------- LOGIN / SIGN UP ---------- */
-/* PARA ACTIVAR "CONTINUE WITH GOOGLE": pega aquí tu Client ID (ver instrucciones). Si lo dejas vacío, el botón avisa que falta configurarlo. */
-const GOOGLE_CLIENT_ID='';
 
-const USERS_KEY='reeva-users',SESSION_KEY='reeva-user',COMMENTS_KEY='reeva-comments';
-const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const readJSON=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}};
-let user=readJSON(SESSION_KEY,null),mode='login';
-const LOGIN_ICON=$('#btn-login').innerHTML;
+const SESSION_KEY = 'reeva-user';
+const COMMENTS_KEY = 'reeva-comments';
 
-function toast(msg){
-  let t=$('.toast');if(!t){t=document.createElement('div');t.className='toast';document.body.appendChild(t)}
-  t.textContent=msg;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),2800);
-}
-/* Las contraseñas se guardan cifradas (SHA-256) SOLO en este navegador. Es una demo: para un sitio real hace falta un servidor. */
-async function hash(t){
-  if(window.crypto&&crypto.subtle&&window.TextEncoder){
-    const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('reeva:'+t));
-    return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
-  }
-  return btoa(unescape(encodeURIComponent('reeva:'+t)));
-}
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;'
+}[c]));
 
-/* --- ventana (se construye aquí; reemplaza a la antigua del HTML) --- */
-const oldModal=$('#modal');if(oldModal)oldModal.remove();
-const logoSrc=($('.logo img')||{}).src||'';
-document.body.insertAdjacentHTML('beforeend',`
-<div class="modal" id="modal" hidden>
-  <div class="modal-box auth" role="dialog" aria-modal="true" aria-labelledby="m-title">
-    <button class="m-close" id="m-close" type="button" aria-label="Close">✕</button>
-    ${logoSrc?`<img class="auth-logo" src="${logoSrc}" alt="REEVA">`:''}
-    <h3 id="m-title">Welcome back</h3>
-    <p class="auth-sub" id="m-sub"></p>
-    <div class="auth-tabs"><button type="button" id="tab-login" class="on">Log in</button><button type="button" id="tab-signup">Sign up</button></div>
-    <button class="auth-google" id="g-btn" type="button">
-      <svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.4c-.5 2.9-2.1 5.3-4.5 6.9l7.3 5.7c4.3-4 6.9-9.9 6.9-16.6z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-2.9-.8-4.7s.3-3.3.8-4.7l-7.9-6.1C.9 16.4 0 20.1 0 24s.9 7.6 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.3-5.7c-2 1.4-4.7 2.3-8.6 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
-      Continue with Google
-    </button>
-    <p class="auth-or"><span>or with email</span></p>
-    <form id="auth" novalidate>
-      <label id="f-name" hidden>Name<input type="text" id="a-name" autocomplete="name"></label>
-      <p class="err" id="e-name" hidden></p>
-      <label>Email<input type="email" id="a-email" autocomplete="email"></label>
-      <p class="err" id="e-email" hidden></p>
-      <label>Password<span class="pw"><input type="password" id="a-pass" autocomplete="current-password">
-        <button type="button" id="pw-eye" aria-label="Show or hide password"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></span></label>
-      <p class="err" id="e-pass" hidden></p>
-      <p class="err form" id="e-form" hidden></p>
-      <button class="btn full" id="a-submit" type="submit">Log in</button>
-    </form>
-    <p class="auth-legal">By continuing, you agree to REEVA's terms and privacy policy.</p>
-  </div>
-</div>`);
-
-function clearErrors(){
-  ['name','email','pass','form'].forEach(k=>{$('#e-'+k).hidden=true});
-  ['a-name','a-email','a-pass'].forEach(id=>$('#'+id).classList.remove('bad'));
-}
-function fieldError(k,msg){
-  const e=$('#e-'+k);e.textContent=msg;e.hidden=false;
-  const ids={name:'a-name',email:'a-email',pass:'a-pass'};if(ids[k])$('#'+ids[k]).classList.add('bad');
-}
-function setMode(m){
-  mode=m;const su=m==='signup';
-  $('#tab-login').classList.toggle('on',!su);$('#tab-signup').classList.toggle('on',su);
-  $('#f-name').hidden=!su;
-  $('#m-title').textContent=su?'Create your account':'Welcome back';
-  $('#m-sub').textContent=su?'Join REEVA and give clothes a second life.':'Log in to comment and keep track of your cart.';
-  $('#a-submit').textContent=su?'Create account':'Log in';
-  $('#a-pass').setAttribute('autocomplete',su?'new-password':'current-password');
-  clearErrors();
-}
-function openLogin(e){
-  if(e&&e.preventDefault)e.preventDefault();
-  $('#auth').reset();setMode('login');$('#user-menu').hidden=true;
-  $('#modal').hidden=false;setTimeout(()=>$('#a-email').focus(),50);
-}
-document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('[data-login]'))openLogin(e)});
-$('#tab-login').onclick=()=>setMode('login');
-$('#tab-signup').onclick=()=>setMode('signup');
-$('#m-close').onclick=()=>$('#modal').hidden=true;
-$('#modal').onclick=e=>{if(e.target.id==='modal')$('#modal').hidden=true};
-$('#pw-eye').onclick=()=>{const p=$('#a-pass');p.type=p.type==='password'?'text':'password'};
-
-/* --- sesión: avatar en el menú + mini menú "Log out" --- */
-const menu=document.createElement('div');menu.id='user-menu';menu.hidden=true;
-menu.innerHTML='<p class="um-name"></p><p class="um-mail"></p><button type="button" id="um-out">Log out</button>';
-$('.nav-icons').appendChild(menu);
-function renderUser(){
-  const b=$('#btn-login');
-  if(user){
-    b.innerHTML=user.picture?`<img class="avatar" src="${esc(user.picture)}" alt="" referrerpolicy="no-referrer">`
-      :`<span class="avatar">${esc((user.name||'?')[0].toUpperCase())}</span>`;
-    b.setAttribute('aria-label','Account');
-    $('.um-name').textContent=user.name;$('.um-mail').textContent=user.email;
-  }else{b.innerHTML=LOGIN_ICON;b.setAttribute('aria-label','Log in');menu.hidden=true}
-  updateCommentNote();
-}
-function finishLogin(u){
-  user=u;localStorage.setItem(SESSION_KEY,JSON.stringify(u));
-  $('#modal').hidden=true;renderUser();toast(`Welcome, ${u.name.split(' ')[0]}!`);
-}
-$('#btn-login').onclick=e=>{if(user){e.stopPropagation();menu.hidden=!menu.hidden}else openLogin()};
-document.addEventListener('click',e=>{if(!e.target.closest('#user-menu,#btn-login'))menu.hidden=true});
-$('#um-out').onclick=()=>{user=null;localStorage.removeItem(SESSION_KEY);renderUser();toast('You have been logged out')};
-
-/* --- registro / inicio de sesión con email --- */
-$('#auth').onsubmit=async e=>{
-  e.preventDefault();clearErrors();
-  const name=$('#a-name').value.trim(),email=$('#a-email').value.trim().toLowerCase(),pass=$('#a-pass').value;
-  let bad=false;
-  if(mode==='signup'&&name.length<2){fieldError('name','Please enter your name.');bad=true}
-  if(!/^\S+@\S+\.\S+$/.test(email)){fieldError('email','Enter an email address like example@mysite.com.');bad=true}
-  if(pass.length<6){fieldError('pass','Use at least 6 characters.');bad=true}
-  if(bad)return;
-  const users=readJSON(USERS_KEY,{}),h=await hash(pass);
-  if(mode==='signup'){
-    if(users[email]){fieldError('form','An account with this email already exists. Try logging in.');return}
-    users[email]={name,hash:h};localStorage.setItem(USERS_KEY,JSON.stringify(users));
-    finishLogin({name,email,provider:'email'});
-  }else{
-    const u=users[email];
-    if(!u||u.hash!==h){fieldError('form','Incorrect email or password.');return}
-    finishLogin({name:u.name,email,provider:'email'});
+const readJSON = (k, d) => {
+  try {
+    return JSON.parse(localStorage.getItem(k)) ?? d;
+  } catch {
+    return d;
   }
 };
 
-/* --- Google --- */
-function loadGoogle(){
-  return new Promise((res,rej)=>{
-    if(window.google&&google.accounts&&google.accounts.oauth2)return res();
-    const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.async=true;
-    s.onload=res;s.onerror=()=>rej(new Error('offline'));document.head.appendChild(s);
+let user = null;
+let mode = 'login';
+
+const LOGIN_ICON = $('#btn-login').innerHTML;
+
+function toast(msg) {
+  let t = $('.toast');
+
+  if (!t) {
+    t = document.createElement('div');
+    t.className = 'toast';
+    document.body.appendChild(t);
+  }
+
+  t.textContent = msg;
+  t.classList.add('on');
+
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.classList.remove('on'), 2800);
+}
+
+/* Construcción del formulario de autenticación */
+
+const oldModal = $('#modal');
+if (oldModal) oldModal.remove();
+
+const logoSrc = ($('.logo img') || {}).src || '';
+
+document.body.insertAdjacentHTML('beforeend', `
+<div class="modal" id="modal" hidden>
+  <div class="modal-box auth" role="dialog"
+       aria-modal="true" aria-labelledby="m-title">
+
+    <button class="m-close" id="m-close"
+            type="button" aria-label="Close">✕</button>
+
+    ${logoSrc
+      ? `<img class="auth-logo" src="${logoSrc}" alt="REEVA">`
+      : ''}
+
+    <h3 id="m-title">Welcome back</h3>
+    <p class="auth-sub" id="m-sub"></p>
+
+    <div class="auth-tabs">
+      <button type="button" id="tab-login" class="on">Log in</button>
+      <button type="button" id="tab-signup">Sign up</button>
+    </div>
+
+    <button class="auth-google" id="g-btn" type="button">
+      <svg viewBox="0 0 48 48" width="20" height="20"
+           aria-hidden="true">
+        <path fill="#EA4335"
+          d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/>
+        <path fill="#4285F4"
+          d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.4c-.5 2.9-2.1 5.3-4.5 6.9l7.3 5.7c4.3-4 6.9-9.9 6.9-16.6z"/>
+        <path fill="#FBBC05"
+          d="M10.5 28.7c-.5-1.4-.8-2.9-.8-4.7s.3-3.3.8-4.7l-7.9-6.1C.9 16.4 0 20.1 0 24s.9 7.6 2.6 10.8l7.9-6.1z"/>
+        <path fill="#34A853"
+          d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.3-5.7c-2 1.4-4.7 2.3-8.6 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/>
+      </svg>
+      Continue with Google
+    </button>
+
+    <p class="auth-or"><span>or with email</span></p>
+
+    <form id="auth" novalidate>
+      <label id="f-name" hidden>
+        Name
+        <input type="text" id="a-name" autocomplete="name">
+      </label>
+      <p class="err" id="e-name" hidden></p>
+
+      <label>
+        Email
+        <input type="email" id="a-email" autocomplete="email">
+      </label>
+      <p class="err" id="e-email" hidden></p>
+
+      <label>
+        Password
+        <span class="pw">
+          <input type="password" id="a-pass"
+                 autocomplete="current-password">
+          <button type="button" id="pw-eye"
+                  aria-label="Show or hide password">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </span>
+      </label>
+      <p class="err" id="e-pass" hidden></p>
+      <p class="err form" id="e-form" hidden></p>
+
+      <button class="btn full" id="a-submit" type="submit">
+        Log in
+      </button>
+    </form>
+
+    <p class="auth-legal">
+      By continuing, you agree to REEVA's terms and privacy policy.
+    </p>
+  </div>
+</div>
+`);
+
+function clearErrors() {
+  ['name', 'email', 'pass', 'form'].forEach(k => {
+    $('#e-' + k).hidden = true;
+  });
+
+  ['a-name', 'a-email', 'a-pass'].forEach(id => {
+    $('#' + id).classList.remove('bad');
   });
 }
-async function googleLogin(){
+
+function fieldError(k, msg) {
+  const el = $('#e-' + k);
+  if (!el) return;
+
+  el.textContent = msg;
+  el.hidden = false;
+
+  const ids = {
+    name: 'a-name',
+    email: 'a-email',
+    pass: 'a-pass'
+  };
+
+  if (ids[k]) $('#' + ids[k]).classList.add('bad');
+}
+
+function setMode(m) {
+  mode = m;
+  const signup = m === 'signup';
+
+  $('#tab-login').classList.toggle('on', !signup);
+  $('#tab-signup').classList.toggle('on', signup);
+  $('#f-name').hidden = !signup;
+
+  $('#m-title').textContent =
+    signup ? 'Create your account' : 'Welcome back';
+
+  $('#m-sub').textContent = signup
+    ? 'Join REEVA and give clothes a second life.'
+    : 'Log in to comment and keep track of your cart.';
+
+  $('#a-submit').textContent =
+    signup ? 'Create account' : 'Log in';
+
+  $('#a-pass').setAttribute(
+    'autocomplete',
+    signup ? 'new-password' : 'current-password'
+  );
+
   clearErrors();
-  if(!GOOGLE_CLIENT_ID){fieldError('form','Google sign-in is not set up yet. Add your Client ID in script.js (GOOGLE_CLIENT_ID).');return}
-  if(location.protocol==='file:'){fieldError('form','Google sign-in does not work when the page is opened as a file. Open the site with Live Server instead.');return}
-  try{await loadGoogle()}catch(err){fieldError('form','Could not reach Google. Check your internet connection.');return}
-  const client=google.accounts.oauth2.initTokenClient({
-    client_id:GOOGLE_CLIENT_ID,scope:'openid email profile',
-    callback:async r=>{
-      if(r.error){fieldError('form','Google sign-in was cancelled.');return}
-      try{
-        const u=await (await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:'Bearer '+r.access_token}})).json();
-        finishLogin({name:u.name||u.email,email:u.email,picture:u.picture,provider:'google'});
-      }catch(err){fieldError('form','Could not read your Google profile. Please try again.')}
-    },
-    error_callback:()=>fieldError('form','Google sign-in was cancelled.')
-  });
-  client.requestAccessToken();
 }
-$('#g-btn').onclick=googleLogin;
+
+function openLogin(e) {
+  if (e && e.preventDefault) e.preventDefault();
+
+  $('#auth').reset();
+  setMode('login');
+  $('#user-menu').hidden = true;
+  $('#modal').hidden = false;
+
+  setTimeout(() => $('#a-email').focus(), 50);
+}
+
+document.addEventListener('click', e => {
+  if (e.target.closest && e.target.closest('[data-login]')) {
+    openLogin(e);
+  }
+});
+
+$('#tab-login').onclick = () => setMode('login');
+$('#tab-signup').onclick = () => setMode('signup');
+
+$('#m-close').onclick = () => {
+  $('#modal').hidden = true;
+};
+
+$('#modal').onclick = e => {
+  if (e.target.id === 'modal') $('#modal').hidden = true;
+};
+
+$('#pw-eye').onclick = () => {
+  const p = $('#a-pass');
+  p.type = p.type === 'password' ? 'text' : 'password';
+};
+
+/* Menú de usuario */
+
+const menu = document.createElement('div');
+menu.id = 'user-menu';
+menu.hidden = true;
+menu.innerHTML = `
+  <p class="um-name"></p>
+  <p class="um-mail"></p>
+  <button type="button" id="um-out">Log out</button>
+`;
+
+$('.nav-icons').appendChild(menu);
+
+function renderUser() {
+  const button = $('#btn-login');
+
+  if (user) {
+    button.innerHTML = user.picture
+      ? `<img class="avatar" src="${esc(user.picture)}"
+              alt="" referrerpolicy="no-referrer">`
+      : `<span class="avatar">${esc(
+          (user.name || '?')[0].toUpperCase()
+        )}</span>`;
+
+    button.setAttribute('aria-label', 'Account');
+    $('.um-name').textContent = user.name || '';
+    $('.um-mail').textContent = user.email || '';
+  } else {
+    button.innerHTML = LOGIN_ICON;
+    button.setAttribute('aria-label', 'Log in');
+    menu.hidden = true;
+  }
+
+  updateCommentNote();
+}
+
+/* Firebase mantiene el estado de la sesión */
+
+onAuthStateChanged(auth, firebaseUser => {
+  if (firebaseUser) {
+    user = {
+      name: firebaseUser.displayName || firebaseUser.email || 'User',
+      email: firebaseUser.email || '',
+      picture: firebaseUser.photoURL || '',
+      provider: firebaseUser.providerData[0]?.providerId || 'password'
+    };
+  } else {
+    user = null;
+  }
+
+  renderUser();
+});
+
+function finishLogin(u) {
+  user = u;
+
+  localStorage.setItem(SESSION_KEY, JSON.stringify(u));
+
+  $('#modal').hidden = true;
+  renderUser();
+
+  toast(`Welcome, ${(u.name || 'User').split(' ')[0]}!`);
+}
+
+$('#btn-login').onclick = e => {
+  if (user) {
+    e.stopPropagation();
+    menu.hidden = !menu.hidden;
+  } else {
+    openLogin();
+  }
+};
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#user-menu, #btn-login')) {
+    menu.hidden = true;
+  }
+});
+
+/* Cerrar sesión */
+
+$('#um-out').onclick = async () => {
+  try {
+    await signOut(auth);
+    localStorage.removeItem(SESSION_KEY);
+    menu.hidden = true;
+    toast('You have been logged out');
+  } catch (error) {
+    console.error('Logout error:', error);
+    toast('Could not log out. Please try again.');
+  }
+};
+
+/* Registro e inicio de sesión con correo */
+
+$('#auth').onsubmit = async e => {
+  e.preventDefault();
+  clearErrors();
+
+  const name = $('#a-name').value.trim();
+  const email = $('#a-email').value.trim();
+  const pass = $('#a-pass').value;
+
+  let invalid = false;
+
+  if (mode === 'signup' && name.length < 2) {
+    fieldError('name', 'Please enter your name.');
+    invalid = true;
+  }
+
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    fieldError('email', 'Enter a valid email address.');
+    invalid = true;
+  }
+
+  if (pass.length < 6) {
+    fieldError('pass', 'Use at least 6 characters.');
+    invalid = true;
+  }
+
+  if (invalid) return;
+
+  try {
+    let credential;
+
+    if (mode === 'signup') {
+      credential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        pass
+      );
+
+      await updateProfile(credential.user, {
+        displayName: name
+      });
+    } else {
+      credential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        pass
+      );
+    }
+
+    const firebaseUser = credential.user;
+
+    finishLogin({
+      name: firebaseUser.displayName || name || firebaseUser.email,
+      email: firebaseUser.email || email,
+      picture: firebaseUser.photoURL || '',
+      provider: firebaseUser.providerData[0]?.providerId || 'password'
+    });
+
+  } catch (error) {
+    console.error(
+      'Firebase authentication error:',
+      error.code,
+      error.message
+    );
+
+    if (error.code === 'auth/email-already-in-use') {
+      fieldError(
+        'form',
+        'This email already has an account. Try logging in.'
+      );
+    } else if (
+      error.code === 'auth/invalid-credential' ||
+      error.code === 'auth/user-not-found' ||
+      error.code === 'auth/wrong-password'
+    ) {
+      fieldError('form', 'Incorrect email or password.');
+    } else if (error.code === 'auth/weak-password') {
+      fieldError('pass', 'Please choose a stronger password.');
+    } else if (error.code === 'auth/invalid-email') {
+      fieldError('email', 'Please enter a valid email.');
+    } else if (error.code === 'auth/too-many-requests') {
+      fieldError(
+        'form',
+        'Too many attempts. Please wait a little and try again.'
+      );
+    } else if (error.code === 'auth/network-request-failed') {
+      fieldError(
+        'form',
+        'Network error. Check your internet connection.'
+      );
+    } else {
+      fieldError('form', 'Something went wrong. Please try again.');
+    }
+  }
+};
+
+/* Inicio de sesión con Google */
+
+async function googleLogin() {
+  clearErrors();
+
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    const firebaseUser = result.user;
+
+    finishLogin({
+      name: firebaseUser.displayName || firebaseUser.email || 'User',
+      email: firebaseUser.email || '',
+      picture: firebaseUser.photoURL || '',
+      provider: 'google.com'
+    });
+
+  } catch (error) {
+    console.error(
+      'Google sign-in error:',
+      error.code,
+      error.message
+    );
+
+    if (error.code === 'auth/popup-closed-by-user') {
+      fieldError('form', 'Sign-in was cancelled. Please try again.');
+    } else if (error.code === 'auth/popup-blocked') {
+      fieldError('form', 'Your browser blocked the sign-in popup.');
+    } else if (error.code === 'auth/unauthorized-domain') {
+      fieldError(
+        'form',
+        'This website domain is not authorized in Firebase.'
+      );
+    } else {
+      fieldError('form', 'Could not sign in with Google. Please try again.');
+    }
+  }
+}
+
+$('#g-btn').onclick = googleLogin;
 
 /* ---------- BLOG ---------- */
 $('#posts').innerHTML=POSTS.map((p,i)=>`<article class="post" data-i="${i}"><img src="${IMG_DIR}${p.img}" alt="" loading="lazy">
