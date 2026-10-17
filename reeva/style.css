@@ -1030,3 +1030,386 @@ textarea:focus{outline:0;border-color:var(--teal);background:#fff}
     height: 230px;
   }
 }
+
+/* =====================================
+   REEVA — Aesthetic comments
+   ===================================== */
+
+.reeva-comment {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 22px 0;
+  border-bottom: 1px solid #eee8f2;
+  animation: commentFadeIn 0.25s ease;
+}
+
+.comment-avatar {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #eee7f5;
+  color: #594477;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.comment-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.comment-author {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.comment-author b {
+  color: #30283a;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.comment-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: #9991a2;
+  font-size: 11px;
+}
+
+.comment-edited {
+  color: #80679d;
+  background: #f2edf7;
+  border-radius: 20px;
+  padding: 3px 8px;
+  font-size: 10px;
+  letter-spacing: 0.2px;
+}
+
+.comment-tools {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.comment-icon-btn {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: #92859f;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.comment-icon-btn svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.comment-icon-btn:hover {
+  background: #f2edf7;
+  border-color: #e7ddef;
+  color: #594477;
+  transform: translateY(-1px);
+}
+
+.comment-icon-btn.delete-comment:hover {
+  background: #fbefef;
+  border-color: #f2dede;
+  color: #b35e68;
+}
+
+.comment-message p {
+  margin: 0;
+  color: #625b69;
+  font-size: 14px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.comment-edit-area {
+  margin-top: 4px;
+}
+
+.comment-edit-area[hidden],
+.comment-message[hidden] {
+  display: none !important;
+}
+
+.comment-edit-input {
+  display: block;
+  width: 100%;
+  min-height: 90px;
+  padding: 13px 15px;
+  border: 1px solid #ded3e9;
+  border-radius: 12px;
+  background: #fdfbff;
+  color: #39313f;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.7;
+  resize: vertical;
+  outline: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.comment-edit-input:focus {
+  border-color: #a18ab9;
+  box-shadow: 0 0 0 3px rgba(126, 99, 155, 0.10);
+}
+
+.comment-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.comment-cancel-edit,
+.comment-save-edit {
+  min-height: 35px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.comment-cancel-edit {
+  border: 1px solid #e8e0ee;
+  background: transparent;
+  color: #756b7e;
+}
+
+.comment-cancel-edit:hover {
+  background: #f6f2f8;
+}
+
+.comment-save-edit {
+  border: 1px solid #594477;
+  background: #594477;
+  color: white;
+}
+
+.comment-save-edit:hover {
+  background: #44325f;
+  transform: translateY(-1px);
+}
+
+@keyframes commentFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 480px) {
+  .reeva-comment {
+    gap: 10px;
+    padding: 18px 0;
+  }
+
+  .comment-avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  .comment-header {
+    gap: 6px;
+  }
+
+  .comment-icon-btn {
+    width: 29px;
+    height: 29px;
+  }
+
+  .comment-message p {
+    font-size: 13px;
+  }
+}
+
+/* REEVA — Comment spacing & alignment fix */
+
+.reeva-comment {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 18px;
+  padding: 26px 8px;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.comment-avatar {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  box-sizing: border-box;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.comment-content {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding-right: 4px;
+}
+
+.comment-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 16px;
+}
+
+.comment-author {
+  min-width: 0;
+  padding-top: 2px;
+  gap: 7px;
+}
+
+.comment-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  line-height: 1.5;
+}
+
+.comment-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: -3px 0 0 8px;
+  flex-shrink: 0;
+}
+
+.comment-icon-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 10px;
+}
+
+.comment-icon-btn svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+.comment-message {
+  width: 100%;
+  padding: 0 2px 3px 0;
+  box-sizing: border-box;
+}
+
+.comment-message p {
+  margin: 0;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+
+.comment-edit-area {
+  width: 100%;
+  margin-top: 4px;
+  box-sizing: border-box;
+}
+
+.comment-edit-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 15px 16px;
+  line-height: 1.8;
+}
+
+.comment-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.comment-cancel-edit,
+.comment-save-edit {
+  min-height: 38px;
+  padding: 9px 17px;
+}
+
+@media (max-width: 480px) {
+  .reeva-comment {
+    grid-template-columns: 36px minmax(0, 1fr);
+    column-gap: 12px;
+    padding: 22px 2px;
+  }
+
+  .comment-avatar {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+  }
+
+  .comment-header {
+    gap: 8px;
+    margin-bottom: 13px;
+  }
+
+  .comment-tools {
+    gap: 3px;
+    margin-left: 2px;
+  }
+
+  .comment-icon-btn {
+    width: 30px;
+    height: 30px;
+  }
+}

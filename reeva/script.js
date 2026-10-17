@@ -10,6 +10,13 @@ import {
   signInWithPopup,
   signOut
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDpBhZW9L8hKYwFR9kJycRSbi6nadZPJ9c",
@@ -22,7 +29,31 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
+// ---------- FIRESTORE: USER PROFILES ----------
+
+async function saveUserProfile(firebaseUser) {
+  if (!firebaseUser) return;
+
+  const userRef = doc(db, 'users', firebaseUser.uid);
+  const userSnap = await getDoc(userRef);
+
+  const profile = {
+    uid: firebaseUser.uid,
+    name: firebaseUser.displayName || firebaseUser.email || 'User',
+    email: firebaseUser.email || '',
+    picture: firebaseUser.photoURL || '',
+    provider: firebaseUser.providerData[0]?.providerId || 'password',
+    updatedAt: serverTimestamp()
+  };
+
+  if (!userSnap.exists()) {
+    profile.createdAt = serverTimestamp();
+  }
+
+  await setDoc(userRef, profile, { merge: true });
+}
 /* Si algo falla en el JavaScript, muestra el error en una franja roja arriba de la página */
 window.addEventListener('error',e=>{
   if(e.target&&e.target!==window)return;
@@ -655,9 +686,15 @@ async function googleLogin() {
 
   try {
     const result = await signInWithPopup(auth, googleProvider);
-    const firebaseUser = result.user;
+   const firebaseUser = result.user;
 
-    finishLogin({
+try {
+  await saveUserProfile(firebaseUser);
+} catch (error) {
+  console.error('Could not save Google user profile:', error);
+}
+
+finishLogin({
       name: firebaseUser.displayName || firebaseUser.email || 'User',
       email: firebaseUser.email || '',
       picture: firebaseUser.photoURL || '',
@@ -688,49 +725,343 @@ async function googleLogin() {
 
 $('#g-btn').onclick = googleLogin;
 
+
 /* ---------- BLOG ---------- */
-$('#posts').innerHTML=POSTS.map((p,i)=>`<article class="post" data-i="${i}"><img src="${IMG_DIR}${p.img}" alt="" loading="lazy">
-  <div><p class="meta">${p.a} · ${p.d} · 4 min read</p><h4>${p.t}</h4><p>${p.x}</p></div></article>`).join('');
-let currentPost=0;
-function resetComment(){$('#comment').value='';$('#comment').rows=1;$('#c-actions').hidden=true}
-function updateCommentNote(){
-  const s=$('#c-actions .small');if(!s)return;
-  s.innerHTML=user?`Posting as <b>${esc(user.name)}</b>`:'<a href="#" data-login>Log in</a> to post as a member';
+
+$('#posts').innerHTML = POSTS.map((p, i) => `
+  <article class="post" data-i="${i}">
+    <img src="${IMG_DIR}${p.img}" alt="" loading="lazy">
+    <div>
+      <p class="meta">${p.a} · ${p.d} · 4 min read</p>
+      <h4>${p.t}</h4>
+      <p>${p.x}</p>
+    </div>
+  </article>
+`).join('');
+
+let currentPost = 0;
+
+function resetComment() {
+  $('#comment').value = '';
+  $('#comment').rows = 1;
+  $('#c-actions').hidden = true;
 }
-function ensureCommentsList(){
-  let l=$('#comments-list');
-  if(!l){l=document.createElement('div');l.id='comments-list';$('#c-actions').insertAdjacentElement('afterend',l)}
-  return l;
+
+function updateCommentNote() {
+  const s = $('#c-actions .small');
+  if (!s) return;
+
+  s.innerHTML = user
+    ? `Posting as <b>${esc(user.name)}</b>`
+    : '<a href="#" data-login>Log in</a> to post as a member';
 }
-function renderComments(){
-  const list=(readJSON(COMMENTS_KEY,{})[POSTS[currentPost].full]||[]).slice().reverse();
-  ensureCommentsList().innerHTML=list.map(c=>`<div class="cm"><span class="avatar">${esc((c.name||'?')[0].toUpperCase())}</span>
-    <div><b>${esc(c.name)}</b><small>${esc(c.date)}</small><p>${esc(c.text)}</p></div></div>`).join('');
+
+function ensureCommentsList() {
+  let list = $('#comments-list');
+
+  if (!list) {
+    list = document.createElement('div');
+    list.id = 'comments-list';
+    $('#c-actions').insertAdjacentElement('afterend', list);
+  }
+
+  return list;
 }
-$$('.post').forEach(el=>el.onclick=()=>{
-  currentPost=+el.dataset.i;const p=POSTS[currentPost];
-  const card=$('#blog-post .post-card')||$('#blog-post');
-  let box=$('#post-body');
-  if(!box){box=document.createElement('div');box.id='post-body';card.prepend(box)}
-  ['#post-meta','#post-title'].forEach(s=>{const e=$(s);if(e)e.remove()});
-  box.innerHTML=`<p class="meta">${p.a} · ${p.d} · 4 min read</p>
-    <h2>${p.full}</h2>
-    <img class="photo" src="${IMG_DIR}${p.img}" alt="">
-    <div>${p.body||'<p class="small">'+p.x+'</p>'}</div>`;
-  resetComment();updateCommentNote();renderComments();
-  $('#blog-list').hidden=true;$('#blog-post').hidden=false;window.scrollTo(0,0);
+
+function renderComments() {
+  const key = POSTS[currentPost].full;
+  const all = readJSON(COMMENTS_KEY, {});
+
+  const comments = (all[key] || [])
+    .map((comment, index) => ({
+      ...comment,
+      originalIndex: index
+    }))
+    .reverse();
+
+  ensureCommentsList().innerHTML = comments.map(comment => {
+    const isOwner =
+      !!user &&
+      !!auth.currentUser &&
+      !!comment.uid &&
+      comment.uid === auth.currentUser.uid;
+
+    const editedLabel = comment.edited
+      ? '<span class="comment-edited">Edited</span>'
+      : '';
+
+    return `
+      <div class="cm reeva-comment">
+        <span class="avatar comment-avatar">
+          ${esc((comment.name || '?')[0].toUpperCase())}
+        </span>
+
+        <div class="comment-content">
+          <div class="comment-header">
+            <div class="comment-author">
+              <b>${esc(comment.name || 'User')}</b>
+              <div class="comment-meta">
+                <span>${esc(comment.date || '')}</span>
+                ${editedLabel}
+              </div>
+            </div>
+
+            ${isOwner ? `
+              <div class="comment-tools">
+                <button
+                  type="button"
+                  class="comment-icon-btn edit-comment"
+                  data-edit-comment="${comment.originalIndex}"
+                  aria-label="Edit comment"
+                  title="Edit comment">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 20h9"/>
+                    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/>
+                  </svg>
+                </button>
+
+                <button
+                  type="button"
+                  class="comment-icon-btn delete-comment"
+                  data-delete-comment="${comment.originalIndex}"
+                  aria-label="Delete comment"
+                  title="Delete comment">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 6h18"/>
+                    <path d="M8 6V4h8v2"/>
+                    <path d="m19 6-1 14H6L5 6"/>
+                    <path d="M10 11v5M14 11v5"/>
+                  </svg>
+                </button>
+              </div>
+            ` : ''}
+          </div>
+
+          <div class="comment-message">
+            <p class="comment-text">${esc(comment.text || '')}</p>
+          </div>
+
+          ${isOwner ? `
+            <div class="comment-edit-area" hidden>
+              <textarea
+                class="comment-edit-input"
+                maxlength="2000"
+                aria-label="Edit your comment">${esc(comment.text || '')}</textarea>
+
+              <div class="comment-edit-actions">
+                <button
+                  type="button"
+                  class="comment-cancel-edit">Cancel</button>
+                <button
+                  type="button"
+                  class="comment-save-edit">Save changes</button>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const list = ensureCommentsList();
+
+  // Open the inline editor
+  list.querySelectorAll('.edit-comment').forEach(button => {
+    button.onclick = () => {
+      const commentBox = button.closest('.reeva-comment');
+      const message = commentBox.querySelector('.comment-message');
+      const editArea = commentBox.querySelector('.comment-edit-area');
+      const input = commentBox.querySelector('.comment-edit-input');
+
+      message.hidden = true;
+      editArea.hidden = false;
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+    };
+  });
+
+  // Cancel editing
+  list.querySelectorAll('.comment-cancel-edit').forEach(button => {
+    button.onclick = () => renderComments();
+  });
+
+  // Save edited comment
+  list.querySelectorAll('.comment-save-edit').forEach(button => {
+    button.onclick = () => {
+      const index = Number(
+        button.closest('.reeva-comment')
+          .querySelector('[data-edit-comment]')
+          .dataset.editComment
+      );
+
+      const input = button.closest('.reeva-comment')
+        .querySelector('.comment-edit-input');
+
+      const newText = input.value.trim();
+
+      if (!newText) {
+        toast('Your comment cannot be empty.');
+        input.focus();
+        return;
+      }
+
+      const commentsData = readJSON(COMMENTS_KEY, {});
+      const currentComments = commentsData[key] || [];
+      const comment = currentComments[index];
+
+      if (
+        !auth.currentUser ||
+        !comment ||
+        !comment.uid ||
+        comment.uid !== auth.currentUser.uid
+      ) {
+        toast('You can only edit your own comments.');
+        return;
+      }
+
+      if (newText === comment.text) {
+        renderComments();
+        return;
+      }
+
+      comment.text = newText;
+      comment.edited = true;
+      comment.editedAt = new Date().toISOString();
+
+      commentsData[key] = currentComments;
+      localStorage.setItem(
+        COMMENTS_KEY,
+        JSON.stringify(commentsData)
+      );
+
+      renderComments();
+      toast('Comment updated');
+    };
+  });
+
+  // Delete comment
+  list.querySelectorAll('.delete-comment').forEach(button => {
+    button.onclick = () => {
+      const index = Number(button.dataset.deleteComment);
+      const commentsData = readJSON(COMMENTS_KEY, {});
+      const currentComments = commentsData[key] || [];
+      const comment = currentComments[index];
+
+      if (
+        !auth.currentUser ||
+        !comment ||
+        !comment.uid ||
+        comment.uid !== auth.currentUser.uid
+      ) {
+        toast('You can only delete your own comments.');
+        return;
+      }
+
+      if (!confirm('Delete your comment?')) return;
+
+      currentComments.splice(index, 1);
+      commentsData[key] = currentComments;
+
+      localStorage.setItem(
+        COMMENTS_KEY,
+        JSON.stringify(commentsData)
+      );
+
+      renderComments();
+      toast('Comment deleted');
+    };
+  });
+}
+
+$$('.post').forEach(el => {
+  el.onclick = () => {
+    currentPost = Number(el.dataset.i);
+    const post = POSTS[currentPost];
+    const card = $('#blog-post .post-card') || $('#blog-post');
+
+    let box = $('#post-body');
+
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'post-body';
+      card.prepend(box);
+    }
+
+    ['#post-meta', '#post-title'].forEach(selector => {
+      const element = $(selector);
+      if (element) element.remove();
+    });
+
+    box.innerHTML = `
+      <p class="meta">${post.a} · ${post.d} · 4 min read</p>
+      <h2>${post.full}</h2>
+      <img class="photo" src="${IMG_DIR}${post.img}" alt="">
+      <div>${post.body || '<p class="small">' + post.x + '</p>'}</div>
+    `;
+
+    resetComment();
+    updateCommentNote();
+    renderComments();
+
+    $('#blog-list').hidden = true;
+    $('#blog-post').hidden = false;
+    window.scrollTo(0, 0);
+  };
 });
-function closePost(){$('#blog-list').hidden=false;$('#blog-post').hidden=true}
-$('[data-back]').onclick=e=>{e.preventDefault();closePost()};
-$('#comment').onfocus=()=>{$('#c-actions').hidden=false;$('#comment').rows=4};
-$('#c-cancel').onclick=resetComment;
-$('#c-post').onclick=()=>{
-  if(!user){openLogin();return}
-  const t=$('#comment').value.trim();if(!t)return;
-  const all=readJSON(COMMENTS_KEY,{}),k=POSTS[currentPost].full;
-  (all[k]=all[k]||[]).push({name:user.name,text:t,date:new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})});
-  localStorage.setItem(COMMENTS_KEY,JSON.stringify(all));
-  resetComment();renderComments();toast('Comment posted');
+
+function closePost() {
+  $('#blog-list').hidden = false;
+  $('#blog-post').hidden = true;
+}
+
+$('[data-back]').onclick = event => {
+  event.preventDefault();
+  closePost();
+};
+
+$('#comment').onfocus = () => {
+  $('#c-actions').hidden = false;
+  $('#comment').rows = 4;
+};
+
+$('#c-cancel').onclick = resetComment;
+
+$('#c-post').onclick = () => {
+  if (!user || !auth.currentUser) {
+    openLogin();
+    return;
+  }
+
+  const text = $('#comment').value.trim();
+
+  if (!text) {
+    toast('Write a comment first.');
+    return;
+  }
+
+  const all = readJSON(COMMENTS_KEY, {});
+  const key = POSTS[currentPost].full;
+
+  (all[key] = all[key] || []).push({
+    uid: auth.currentUser.uid,
+    name: user.name,
+    text,
+    edited: false,
+    date: new Date().toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    })
+  });
+
+  localStorage.setItem(
+    COMMENTS_KEY,
+    JSON.stringify(all)
+  );
+
+  resetComment();
+  renderComments();
+  toast('Comment posted');
 };
 
 /* ---------- INIT ---------- */
