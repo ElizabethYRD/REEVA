@@ -1102,11 +1102,7 @@ $('#c-post').onclick = async () => {
     await addDoc(collection(db, 'comments'), {
       postKey: POSTS[currentPost].full,
       uid: auth.currentUser.uid,
-      name:
-        auth.currentUser.displayName ||
-        auth.currentUser.email ||
-        user.name ||
-        'User',
+      name: user.name || auth.currentUser.displayName || 'User',
       text,
       edited: false,
       date: new Date().toLocaleDateString('en-GB', {
