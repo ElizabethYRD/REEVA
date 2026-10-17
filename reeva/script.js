@@ -15,8 +15,16 @@ import {
   doc,
   setDoc,
   getDoc,
-  serverTimestamp
+  serverTimestamp,
+  collection,
+  addDoc,
+  query,
+  where,
+  onSnapshot,
+  updateDoc,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
 
 const firebaseConfig = {
   apiKey: "AIzaSyDpBhZW9L8hKYwFR9kJycRSbi6nadZPJ9c",
@@ -540,6 +548,10 @@ onAuthStateChanged(auth, firebaseUser => {
   }
 
   renderUser();
+  
+if ($('#blog-post') && !$('#blog-post').hidden) {
+  renderComments();
+}
 });
 
 function finishLogin(u) {
@@ -740,6 +752,9 @@ $('#posts').innerHTML = POSTS.map((p, i) => `
 `).join('');
 
 let currentPost = 0;
+let firestoreComments = [];
+let unsubscribeComments = null;
+
 
 function resetComment() {
   $('#comment').value = '';
@@ -768,20 +783,52 @@ function ensureCommentsList() {
   return list;
 }
 
-function renderComments() {
+
+function subscribeToComments() {
+  if (unsubscribeComments) {
+    unsubscribeComments();
+    unsubscribeComments = null;
+  }
+
+  firestoreComments = [];
+  renderComments();
+
   const key = POSTS[currentPost].full;
-  const all = readJSON(COMMENTS_KEY, {});
 
-  const comments = (all[key] || [])
-    .map((comment, index) => ({
-      ...comment,
-      originalIndex: index
-    }))
-    .reverse();
+  const commentsQuery = query(
+    collection(db, 'comments'),
+    where('postKey', '==', key)
+  );
 
-  ensureCommentsList().innerHTML = comments.map(comment => {
+  unsubscribeComments = onSnapshot(
+    commentsQuery,
+    snapshot => {
+      firestoreComments = snapshot.docs.map(commentDoc => ({
+        id: commentDoc.id,
+        ...commentDoc.data()
+      }));
+
+      firestoreComments.sort((a, b) => {
+        const timeA = a.createdAt?.toMillis?.() || 0;
+        const timeB = b.createdAt?.toMillis?.() || 0;
+        return timeA - timeB;
+      });
+
+      renderComments();
+    },
+    error => {
+      console.error('Could not load comments:', error);
+      toast('Could not load comments. Please try again.');
+    }
+  );
+}
+
+function renderComments() {
+  const comments = [...firestoreComments].reverse();
+  const list = ensureCommentsList();
+
+  list.innerHTML = comments.map(comment => {
     const isOwner =
-      !!user &&
       !!auth.currentUser &&
       !!comment.uid &&
       comment.uid === auth.currentUser.uid;
@@ -791,7 +838,8 @@ function renderComments() {
       : '';
 
     return `
-      <div class="cm reeva-comment">
+      <div class="cm reeva-comment"
+           data-comment-id="${esc(comment.id)}">
         <span class="avatar comment-avatar">
           ${esc((comment.name || '?')[0].toUpperCase())}
         </span>
@@ -811,7 +859,6 @@ function renderComments() {
                 <button
                   type="button"
                   class="comment-icon-btn edit-comment"
-                  data-edit-comment="${comment.originalIndex}"
                   aria-label="Edit comment"
                   title="Edit comment">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -823,7 +870,6 @@ function renderComments() {
                 <button
                   type="button"
                   class="comment-icon-btn delete-comment"
-                  data-delete-comment="${comment.originalIndex}"
                   aria-label="Delete comment"
                   title="Delete comment">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -849,12 +895,12 @@ function renderComments() {
                 aria-label="Edit your comment">${esc(comment.text || '')}</textarea>
 
               <div class="comment-edit-actions">
-                <button
-                  type="button"
-                  class="comment-cancel-edit">Cancel</button>
-                <button
-                  type="button"
-                  class="comment-save-edit">Save changes</button>
+                <button type="button" class="comment-cancel-edit">
+                  Cancel
+                </button>
+                <button type="button" class="comment-save-edit">
+                  Save changes
+                </button>
               </div>
             </div>
           ` : ''}
@@ -863,18 +909,16 @@ function renderComments() {
     `;
   }).join('');
 
-  const list = ensureCommentsList();
-
   // Open the inline editor
   list.querySelectorAll('.edit-comment').forEach(button => {
     button.onclick = () => {
-      const commentBox = button.closest('.reeva-comment');
-      const message = commentBox.querySelector('.comment-message');
-      const editArea = commentBox.querySelector('.comment-edit-area');
-      const input = commentBox.querySelector('.comment-edit-input');
+      const box = button.closest('.reeva-comment');
+      const message = box.querySelector('.comment-message');
+      const editor = box.querySelector('.comment-edit-area');
+      const input = box.querySelector('.comment-edit-input');
 
       message.hidden = true;
-      editArea.hidden = false;
+      editor.hidden = false;
       input.focus();
       input.setSelectionRange(input.value.length, input.value.length);
     };
@@ -885,18 +929,12 @@ function renderComments() {
     button.onclick = () => renderComments();
   });
 
-  // Save edited comment
+  // Save edited comment in Firestore
   list.querySelectorAll('.comment-save-edit').forEach(button => {
-    button.onclick = () => {
-      const index = Number(
-        button.closest('.reeva-comment')
-          .querySelector('[data-edit-comment]')
-          .dataset.editComment
-      );
-
-      const input = button.closest('.reeva-comment')
-        .querySelector('.comment-edit-input');
-
+    button.onclick = async () => {
+      const box = button.closest('.reeva-comment');
+      const id = box.dataset.commentId;
+      const input = box.querySelector('.comment-edit-input');
       const newText = input.value.trim();
 
       if (!newText) {
@@ -905,17 +943,19 @@ function renderComments() {
         return;
       }
 
-      const commentsData = readJSON(COMMENTS_KEY, {});
-      const currentComments = commentsData[key] || [];
-      const comment = currentComments[index];
+      const comment = firestoreComments.find(item => item.id === id);
 
       if (
         !auth.currentUser ||
         !comment ||
-        !comment.uid ||
         comment.uid !== auth.currentUser.uid
       ) {
         toast('You can only edit your own comments.');
+        return;
+      }
+
+      if (newText.length > 2000) {
+        toast('Your comment is too long.');
         return;
       }
 
@@ -924,33 +964,34 @@ function renderComments() {
         return;
       }
 
-      comment.text = newText;
-      comment.edited = true;
-      comment.editedAt = new Date().toISOString();
+      button.disabled = true;
 
-      commentsData[key] = currentComments;
-      localStorage.setItem(
-        COMMENTS_KEY,
-        JSON.stringify(commentsData)
-      );
+      try {
+        await updateDoc(doc(db, 'comments', id), {
+          text: newText,
+          edited: true,
+          editedAt: serverTimestamp()
+        });
 
-      renderComments();
-      toast('Comment updated');
+        toast('Comment updated');
+      } catch (error) {
+        console.error('Could not edit comment:', error);
+        toast('Could not update comment. Please try again.');
+        button.disabled = false;
+      }
     };
   });
 
-  // Delete comment
+  // Delete comment from Firestore
   list.querySelectorAll('.delete-comment').forEach(button => {
-    button.onclick = () => {
-      const index = Number(button.dataset.deleteComment);
-      const commentsData = readJSON(COMMENTS_KEY, {});
-      const currentComments = commentsData[key] || [];
-      const comment = currentComments[index];
+    button.onclick = async () => {
+      const box = button.closest('.reeva-comment');
+      const id = box.dataset.commentId;
+      const comment = firestoreComments.find(item => item.id === id);
 
       if (
         !auth.currentUser ||
         !comment ||
-        !comment.uid ||
         comment.uid !== auth.currentUser.uid
       ) {
         toast('You can only delete your own comments.');
@@ -959,19 +1000,20 @@ function renderComments() {
 
       if (!confirm('Delete your comment?')) return;
 
-      currentComments.splice(index, 1);
-      commentsData[key] = currentComments;
+      button.disabled = true;
 
-      localStorage.setItem(
-        COMMENTS_KEY,
-        JSON.stringify(commentsData)
-      );
-
-      renderComments();
-      toast('Comment deleted');
+      try {
+        await deleteDoc(doc(db, 'comments', id));
+        toast('Comment deleted');
+      } catch (error) {
+        console.error('Could not delete comment:', error);
+        toast('Could not delete comment. Please try again.');
+        button.disabled = false;
+      }
     };
   });
 }
+
 
 $$('.post').forEach(el => {
   el.onclick = () => {
@@ -1001,7 +1043,7 @@ $$('.post').forEach(el => {
 
     resetComment();
     updateCommentNote();
-    renderComments();
+    subscribeToComments();
 
     $('#blog-list').hidden = true;
     $('#blog-post').hidden = false;
@@ -1009,7 +1051,15 @@ $$('.post').forEach(el => {
   };
 });
 
+
 function closePost() {
+  if (unsubscribeComments) {
+    unsubscribeComments();
+    unsubscribeComments = null;
+  }
+
+  firestoreComments = [];
+
   $('#blog-list').hidden = false;
   $('#blog-post').hidden = true;
 }
@@ -1026,7 +1076,8 @@ $('#comment').onfocus = () => {
 
 $('#c-cancel').onclick = resetComment;
 
-$('#c-post').onclick = () => {
+
+$('#c-post').onclick = async () => {
   if (!user || !auth.currentUser) {
     openLogin();
     return;
@@ -1039,29 +1090,41 @@ $('#c-post').onclick = () => {
     return;
   }
 
-  const all = readJSON(COMMENTS_KEY, {});
-  const key = POSTS[currentPost].full;
+  if (text.length > 2000) {
+    toast('Your comment is too long.');
+    return;
+  }
 
-  (all[key] = all[key] || []).push({
-    uid: auth.currentUser.uid,
-    name: user.name,
-    text,
-    edited: false,
-    date: new Date().toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    })
-  });
+  const button = $('#c-post');
+  button.disabled = true;
 
-  localStorage.setItem(
-    COMMENTS_KEY,
-    JSON.stringify(all)
-  );
+  try {
+    await addDoc(collection(db, 'comments'), {
+      postKey: POSTS[currentPost].full,
+      uid: auth.currentUser.uid,
+      name:
+        auth.currentUser.displayName ||
+        auth.currentUser.email ||
+        user.name ||
+        'User',
+      text,
+      edited: false,
+      date: new Date().toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      }),
+      createdAt: serverTimestamp()
+    });
 
-  resetComment();
-  renderComments();
-  toast('Comment posted');
+    resetComment();
+    toast('Comment posted');
+  } catch (error) {
+    console.error('Could not post comment:', error);
+    toast('Could not post comment. Please try again.');
+  } finally {
+    button.disabled = false;
+  }
 };
 
 /* ---------- INIT ---------- */
