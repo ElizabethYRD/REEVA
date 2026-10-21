@@ -25,6 +25,14 @@ import {
   deleteDoc
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL
+} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-storage.js";
+
+
 
 const firebaseConfig = {
   apiKey: "AIzaSyDpBhZW9L8hKYwFR9kJycRSbi6nadZPJ9c",
@@ -38,6 +46,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
 // ---------- FIRESTORE: USER PROFILES ----------
 
@@ -48,13 +57,17 @@ async function saveUserProfile(firebaseUser) {
   const userSnap = await getDoc(userRef);
 
   const profile = {
-    uid: firebaseUser.uid,
-    name: firebaseUser.displayName || firebaseUser.email || 'User',
-    email: firebaseUser.email || '',
-    picture: firebaseUser.photoURL || '',
-    provider: firebaseUser.providerData[0]?.providerId || 'password',
-    updatedAt: serverTimestamp()
-  };
+  uid: firebaseUser.uid,
+  name: firebaseUser.displayName || firebaseUser.email || 'User',
+  email: firebaseUser.email || '',
+  picture: firebaseUser.photoURL || '',
+  banner: userSnap.exists() ? (userSnap.data().banner || '') : '',
+  bio: userSnap.exists() ? (userSnap.data().bio || '') : '',
+  provider: firebaseUser.providerData[0]?.providerId || 'password',
+  updatedAt: serverTimestamp()
+};
+
+
 
   if (!userSnap.exists()) {
     profile.createdAt = serverTimestamp();
@@ -505,8 +518,10 @@ menu.hidden = true;
 menu.innerHTML = `
   <p class="um-name"></p>
   <p class="um-mail"></p>
+<a href="/profile/profile.html" id="um-profile">My profile ↗</a>
   <button type="button" id="um-out">Log out</button>
 `;
+
 
 $('.nav-icons').appendChild(menu);
 
@@ -536,6 +551,8 @@ function renderUser() {
 /* Firebase mantiene el estado de la sesión */
 
 onAuthStateChanged(auth, firebaseUser => {
+  console.log("REEVA main — Firebase user:", firebaseUser?.uid ?? null);
+
   if (firebaseUser) {
     user = {
       name: firebaseUser.displayName || firebaseUser.email || 'User',
@@ -645,7 +662,12 @@ $('#auth').onsubmit = async e => {
     }
 
     const firebaseUser = credential.user;
-
+    
+try {
+  await saveUserProfile(firebaseUser);
+} catch (error) {
+  console.error('Could not save user profile:', error);
+}
     finishLogin({
       name: firebaseUser.displayName || name || firebaseUser.email,
       email: firebaseUser.email || email,

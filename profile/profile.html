@@ -1,0 +1,578 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Profile — REEVA</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@500;600;700;800&display=swap');
+
+  :root {
+    --cream: #f8e6c8;
+    --cream-2: #fbf0dc;
+    --paper: #fffaf1;
+    --sand: #efd9b0;
+    --line: #e3cfa8;
+    --red: #c00d0d;
+    --red-d: #9a0a0a;
+    --teal: #2c7f99;
+    --teal-d: #1f6178;
+    --sky: #a8c8dc;
+    --deep: #295249;
+    --ink: #1f6178;
+    --display: 'Syne', sans-serif;
+    --body: 'Inter', sans-serif;
+    --r: 20px;
+    --r-lg: 32px;
+    --sh: 0 10px 30px rgba(41,82,73,.10);
+    --sh-lg: 0 24px 60px rgba(41,82,73,.20);
+    --ease: cubic-bezier(.2,.7,.2,1);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--cream);
+    color: var(--deep);
+    font-family: var(--body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button, input, textarea {
+    font: inherit;
+  }
+
+  button, a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .site-header {
+    width: 100%;
+    padding: 20px var(--pad, clamp(1.2rem, 4vw, 3rem));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .logo img {
+    display: block;
+    width: 145px;
+    max-width: 42vw;
+    height: auto;
+    object-fit: contain;
+  }
+  
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--teal-d);
+  font-family: var(--display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -.06em;
+}
+
+.logo img {
+  display: block;
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.logo sup {
+  margin-left: 2px;
+  font-size: .55em;
+}
+
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--teal-d);
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    transition: color .2s ease, transform .2s ease;
+  }
+
+  .back-link:hover {
+    color: var(--red);
+    transform: translateX(-3px);
+  }
+
+  .profile-main {
+    width: min(1080px, calc(100% - 40px));
+    margin: 54px auto 80px;
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 14px;
+    color: var(--red);
+    font-size: .72rem;
+    font-weight: 800;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+  }
+
+  .eyebrow::before {
+    content: "";
+    width: 23px;
+    height: 2px;
+    background: var(--red);
+  }
+
+  .page-heading {
+    margin: 0;
+    max-width: 750px;
+    color: var(--teal-d);
+    font-family: var(--display);
+    font-size: clamp(2.5rem, 7vw, 5.4rem);
+    font-weight: 800;
+    line-height: .98;
+    letter-spacing: -.065em;
+  }
+
+  .page-heading span {
+    color: var(--red);
+  }
+
+  .page-intro {
+    max-width: 540px;
+    margin: 18px 0 34px;
+    color: var(--deep);
+    font-size: .95rem;
+    line-height: 1.8;
+  }
+
+  .profile-layout {
+    display: grid;
+    grid-template-columns: minmax(0, .85fr) minmax(0, 1.35fr);
+    gap: 24px;
+    align-items: start;
+  }
+
+  .profile-card,
+  .form-card {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--paper);
+    box-shadow: var(--sh);
+  }
+
+  .profile-card {
+    position: relative;
+    padding: 28px;
+  }
+
+  .profile-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 7px;
+    background: var(--teal);
+  }
+
+  .profile-card-label,
+  .form-label-top {
+    color: var(--teal-d);
+    font-size: .7rem;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+
+  .avatar {
+    display: grid;
+    place-items: center;
+    width: 112px;
+    height: 112px;
+    margin: 28px 0 22px;
+    overflow: hidden;
+    border: 5px solid var(--cream-2);
+    border-radius: 50%;
+    background: var(--sky);
+    color: var(--teal-d);
+    font-family: var(--display);
+    font-size: 2.6rem;
+    font-weight: 800;
+  }
+
+  .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .profile-name {
+    overflow-wrap: anywhere;
+    margin: 0;
+    color: var(--teal-d);
+    font-family: var(--display);
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-weight: 800;
+    letter-spacing: -.04em;
+  }
+
+  .profile-email {
+    overflow-wrap: anywhere;
+    margin: 9px 0 22px;
+    color: #687a76;
+    font-size: .82rem;
+    line-height: 1.6;
+  }
+
+  .profile-divider {
+    height: 1px;
+    margin: 22px 0;
+    background: var(--line);
+  }
+
+  .profile-note {
+    margin: 0;
+    color: #566b66;
+    font-size: .85rem;
+    line-height: 1.8;
+  }
+
+  .form-card {
+    padding: clamp(22px, 4vw, 36px);
+  }
+
+  .form-heading {
+    margin: 10px 0 8px;
+    color: var(--teal-d);
+    font-family: var(--display);
+    font-size: clamp(1.65rem, 4vw, 2.25rem);
+    font-weight: 800;
+    letter-spacing: -.045em;
+  }
+
+  .form-description {
+    margin: 0 0 28px;
+    color: #687a76;
+    font-size: .85rem;
+    line-height: 1.7;
+  }
+
+  .form-group {
+    margin-bottom: 22px;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 9px;
+    color: var(--deep);
+    font-size: .78rem;
+    font-weight: 700;
+  }
+
+  .form-group input,
+  .form-group textarea {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    padding: 14px 15px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    outline: none;
+    background: #fffdf8;
+    color: var(--deep);
+    font-size: .88rem;
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+
+  .form-group textarea {
+    min-height: 135px;
+    resize: vertical;
+    line-height: 1.7;
+  }
+
+  .form-group input:focus,
+  .form-group textarea:focus {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(44,127,153,.13);
+  }
+
+  .form-group input::placeholder,
+  .form-group textarea::placeholder {
+    color: #9b9c8e;
+  }
+
+  .field-hint {
+    display: block;
+    margin-top: 8px;
+    color: #7b8278;
+    font-size: .72rem;
+    line-height: 1.6;
+  }
+
+  .save-button {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 52px;
+    padding: 15px 22px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--teal-d);
+    color: white;
+    font-size: .8rem;
+    font-weight: 800;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background .2s ease, transform .2s ease;
+  }
+
+  .save-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    background: var(--red);
+  }
+
+  .save-button:disabled {
+    cursor: wait;
+    opacity: .65;
+  }
+
+  .profile-status {
+    min-height: 24px;
+    margin: 15px 0 0;
+    font-size: .8rem;
+    line-height: 1.6;
+  }
+
+  .site-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 18px;
+    padding: 25px var(--pad, clamp(1.2rem, 4vw, 3rem));
+    border-top: 1px solid var(--line);
+    color: #667770;
+    font-size: .72rem;
+  }
+
+  .site-footer strong {
+    color: var(--teal-d);
+    font-family: var(--display);
+    letter-spacing: .04em;
+  }
+
+  @media (max-width: 760px) {
+    .profile-main {
+      margin-top: 38px;
+    }
+
+    .profile-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .profile-card {
+      padding: 25px;
+    }
+
+    .avatar {
+      width: 94px;
+      height: 94px;
+      margin-top: 22px;
+    }
+  }
+
+  @media (max-width: 430px) {
+    .site-header {
+      padding-top: 17px;
+      padding-bottom: 17px;
+    }
+
+    .logo img {
+      width: 115px;
+    }
+
+    .back-link {
+      font-size: .65rem;
+    }
+
+    .profile-main {
+      width: calc(100% - 28px);
+    }
+
+    .site-footer {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+  }
+</style>
+</head>
+
+<body>
+
+<header class="site-header">
+ 
+<a class="logo" href="./index.html" aria-label="REEVA Home">
+  <img src="/reeva/Imagenes/LogoReeva.png" alt="REEVA logo">
+  <span>REEVA<sup>®</sup></span>
+</a>
+  
+<a class="back-link" href="/reeva/index.html">← Back to home</a>
+
+</header>
+
+
+<main class="profile-main">
+  <span class="eyebrow">YOUR REEVA SPACE</span>
+
+  <h1 class="page-heading">
+    Your story.<br><span>Your space.</span>
+  </h1>
+
+  <p class="page-intro">
+    Your identity, your story, your place in a more circular
+    fashion community.
+  </p>
+
+  <!-- PROFILE VIEW -->
+  <section class="profile-card" id="profile-view">
+    <span class="profile-card-label">YOUR PROFILE / 01</span>
+
+    <div class="avatar" id="avatar">R</div>
+
+    <h2 class="profile-name" id="profile-name">Your profile</h2>
+    <p class="profile-email" id="profile-email">Your account email</p>
+
+    <div class="profile-divider"></div>
+
+    <div id="profile-banner-view" hidden>
+      <img
+        id="profile-banner-image"
+        src=""
+        alt="Your profile banner"
+        style="width:100%; max-height:220px; object-fit:cover; border-radius:16px;"
+      >
+    </div>
+
+    <h3>ABOUT ME</h3>
+    <p class="profile-note" id="profile-bio-view">
+      Your story will appear here.
+    </p>
+
+    <p class="profile-note">
+      Every garment has a story. This is yours.
+    </p>
+
+    <button
+      class="save-button"
+      type="button"
+      id="edit-profile"
+    >
+      EDIT PROFILE <span aria-hidden="true">↗</span>
+    </button>
+
+    <p class="profile-status" id="profile-status"
+       role="status" aria-live="polite"></p>
+  </section>
+
+  <!-- EDIT PROFILE -->
+  <section class="form-card" id="profile-editor" hidden>
+    <span class="form-label-top">ACCOUNT DETAILS / 01</span>
+
+    <h2 class="form-heading">Make it yours.</h2>
+
+    <p class="form-description">
+      Tell the community a little about yourself.
+      You can update these details whenever you like.
+    </p>
+
+    <form id="profile-form">
+      <div class="form-group">
+        <label for="display-name">DISPLAY NAME</label>
+        <input
+          id="display-name"
+          name="display-name"
+          type="text"
+          maxlength="60"
+          placeholder="What should we call you?"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="profile-banner">BANNER IMAGE URL</label>
+        <input
+          id="profile-banner"
+          name="profile-banner"
+          type="url"
+          placeholder="https://example.com/image.jpg"
+        >
+        <span class="field-hint">
+          For now, you can use an image URL.
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label for="profile-bio">ABOUT YOU</label>
+        <textarea
+          id="profile-bio"
+          name="profile-bio"
+          maxlength="300"
+          placeholder="Tell the REEVA community about yourself..."
+        ></textarea>
+        <span class="field-hint">Maximum 300 characters.</span>
+      </div>
+
+      <button class="save-button" type="submit" id="save-profile">
+        SAVE CHANGES <span aria-hidden="true">↗</span>
+      </button>
+
+      <button
+        class="back-link"
+        type="button"
+        id="cancel-edit"
+      >
+        CANCEL
+      </button>
+
+      <p class="profile-editor-status" id="editor-status"
+         role="status" aria-live="polite"></p>
+    </form>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <span><strong>REEVA®</strong> — Transform your forgotten clothes.</span>
+</footer>
+
+  <script type="module" src="profile.js"></script>
+</body>
+</html>

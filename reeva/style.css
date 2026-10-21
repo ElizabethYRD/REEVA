@@ -1413,3 +1413,31 @@ textarea:focus{outline:0;border-color:var(--teal);background:#fff}
     height: 30px;
   }
 }
+
+/* PROFILE NAVIGATION LINK */
+.nav-icons .nav-profile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  color: var(--teal-d);
+  text-decoration: none;
+  border-radius: 50%;
+  transition: color .2s ease, background .2s ease;
+}
+
+.nav-icons .nav-profile svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nav-icons .nav-profile:hover {
+  color: var(--red);
+  background: var(--cream-2);
+}
