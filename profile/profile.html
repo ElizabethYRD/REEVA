@@ -6,11 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Profile — REEVA</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
 
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@500;600;700;800&display=swap');
+<style> 
 
   :root {
     --cream: #f8e6c8;
@@ -49,6 +49,8 @@
     color: var(--deep);
     font-family: var(--body);
     -webkit-font-smoothing: antialiased;
+    line-height: 1.65;
+-webkit-font-smoothing: antialiased;
   }
 
   a {
@@ -148,15 +150,12 @@
   }
 
   .page-heading {
-    margin: 0;
-    max-width: 750px;
-    color: var(--teal-d);
-    font-family: var(--display);
-    font-size: clamp(2.5rem, 7vw, 5.4rem);
-    font-weight: 800;
-    line-height: .98;
-    letter-spacing: -.065em;
-  }
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(2.4rem, 5.2vw, 5.4rem);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
 
   .page-heading span {
     color: var(--red);
@@ -410,29 +409,71 @@
     }
   }
 
-  @media (max-width: 430px) {
-    .site-header {
-      padding-top: 17px;
-      padding-bottom: 17px;
-    }
-
-    .logo img {
-      width: 115px;
-    }
-
-    .back-link {
-      font-size: .65rem;
-    }
-
-    .profile-main {
-      width: calc(100% - 28px);
-    }
-
-    .site-footer {
-      align-items: flex-start;
-      flex-direction: column;
-    }
+  
+/* MOBILE STYLES */
+@media (max-width: 430px) {
+  .site-header {
+    padding-top: 17px;
+    padding-bottom: 17px;
   }
+
+  .logo img {
+    width: 115px;
+  }
+
+  .back-link {
+    font-size: .65rem;
+  }
+
+  .profile-main {
+    width: calc(100% - 28px);
+  }
+
+  .site-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+/* REEVA PROFILE BANNER */
+#profile-view {
+  overflow: hidden;
+}
+
+.profile-banner {
+  width: 100%;
+  height: 160px;
+  overflow: hidden;
+  background: #e8dfd0;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.profile-banner[hidden] {
+  display: none;
+}
+
+.profile-banner img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+/* Larger screens */
+@media (min-width: 768px) {
+  .profile-banner {
+    height: 200px;
+  }
+}
+h1, h2, h3, h4 {
+  font-family: var(--display);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -.03em;
+}
+
 </style>
 </head>
 
@@ -462,9 +503,19 @@
     fashion community.
   </p>
 
-  <!-- PROFILE VIEW -->
-  <section class="profile-card" id="profile-view">
-    <span class="profile-card-label">YOUR PROFILE / 01</span>
+ 
+    <!-- PROFILE VIEW -->
+<section class="profile-card" id="profile-view">
+
+  <div class="profile-banner" id="profile-banner-view" hidden>
+    <img
+      id="profile-banner-image"
+      src=""
+      alt="Your profile banner"
+    >
+  </div>
+
+  <span class="profile-card-label">YOUR PROFILE / 01</span>
 
     <div class="avatar" id="avatar">R</div>
 
@@ -472,15 +523,6 @@
     <p class="profile-email" id="profile-email">Your account email</p>
 
     <div class="profile-divider"></div>
-
-    <div id="profile-banner-view" hidden>
-      <img
-        id="profile-banner-image"
-        src=""
-        alt="Your profile banner"
-        style="width:100%; max-height:220px; object-fit:cover; border-radius:16px;"
-      >
-    </div>
 
     <h3>ABOUT ME</h3>
     <p class="profile-note" id="profile-bio-view">
