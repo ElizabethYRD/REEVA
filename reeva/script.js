@@ -86,7 +86,7 @@ window.addEventListener('error',e=>{
 });
 
 /* Carpeta donde están TUS imágenes (con barra / al final). Cámbiala si tu carpeta se llama distinto */
-const IMG_DIR='Imagenes/';
+const IMG_DIR='reeva/Imagenes/';
 
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const money=n=>'B/. '+n.toFixed(2);
@@ -126,7 +126,7 @@ const PRODUCTS=[
   desc:'A navy hoodie with an 8-ball appliqué outlined in sparkling beads and a gingham star. A one-of-a-kind piece, currently sold out, but our designers are always working on the next one.'},
  {id:11,name:'White oversize',                price:10, old:15, cat:'Sustainable Fashion', img:'white-oversize.png',
   desc:'A light grey oversized sweatshirt decorated with star-shaped patches in denim and leopard print. Comfortable, relaxed and made from reclaimed materials.'},
- {id:6, name:'Patchwork Midi Skirt',          price:30,          cat:'Upcycled Clothing',   img:'falda-midi-patchwork.jpg',
+ {id:6, name:'Patchwork Midi Skirt',          price:30,          cat:'Upcycled Clothing', img:'falda-midi-patchwork.jpg',
   desc:'Midi skirt made with the patchwork technique, joining scraps of classic men\'s shirt fabrics. An exclusive piece with a fluid drape that celebrates creative reuse.'}
 ];
 const SIZES=['S','L'],PATTERNS=['Stripes','Checks','Plain'];
@@ -518,7 +518,7 @@ menu.hidden = true;
 menu.innerHTML = `
   <p class="um-name"></p>
   <p class="um-mail"></p>
-<a href="/profile/profile.html" id="um-profile">My profile ↗</a>
+<a href="profile.html" id="um-profile">My profile ↗</a>
   <button type="button" id="um-out">Log out</button>
 `;
 
