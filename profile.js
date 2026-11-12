@@ -243,6 +243,12 @@ function renderProfile() {
   paintBanner(bannerView, bannerImage, currentProfile.banner || "", currentProfile.bannerPos ?? 50);
 
   metaList.replaceChildren();
+  if (currentProfile.role === "designer") {
+    const studio = currentProfile.designerProfile?.studio;
+    metaList.append(metaItem("🧵 Designer" + (studio ? " · " + studio : "")));
+  } else if (currentProfile.role === "client") {
+    metaList.append(metaItem("🛍 Client"));
+  }
   if (currentProfile.location) metaList.append(metaItem("📍 " + currentProfile.location));
   const link = safeUrl(currentProfile.link || "");
   if (link) metaList.append(metaItem("🔗 " + new URL(link).hostname.replace(/^www\./, ""), link));

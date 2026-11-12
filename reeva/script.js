@@ -50,7 +50,9 @@ const storage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
 // ---------- FIRESTORE: USER PROFILES ----------
 
-async function saveUserProfile(firebaseUser) {
+/* extra (opcional): { role: 'client' | 'designer', studio: '...' }
+   El rol solo se guarda si el usuario todavía no tiene uno (las reglas de Firestore lo exigen). */
+async function saveUserProfile(firebaseUser, extra = {}) {
   if (!firebaseUser) return;
 
   const userRef = doc(db, 'users', firebaseUser.uid);
@@ -73,11 +75,21 @@ async function saveUserProfile(firebaseUser) {
     profile.createdAt = serverTimestamp();
   }
 
+  const hasRole = userSnap.exists() && !!userSnap.data().role;
+  if (!hasRole && (extra.role === 'client' || extra.role === 'designer')) {
+    profile.role = extra.role;
+    if (extra.role === 'designer') {
+      profile.designerProfile = { studio: String(extra.studio || '').trim().slice(0, 60) };
+    }
+  }
+
   await setDoc(userRef, profile, { merge: true });
 }
 /* Si algo falla en el JavaScript, muestra el error en una franja roja arriba de la página */
 window.addEventListener('error',e=>{
   if(e.target&&e.target!==window)return;
+  /* Solo mostramos el detalle técnico en desarrollo; en producción no se expone a los visitantes */
+  if(!['localhost','127.0.0.1',''].includes(location.hostname)){document.documentElement.classList.add('js-failed');return}
   const b=document.createElement('div');
   b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#b00020;color:#fff;font:14px/1.4 monospace;padding:10px 14px';
   b.textContent='ERROR en script.js: '+e.message+' (línea '+e.lineno+')';
@@ -168,11 +180,15 @@ const POSTS=[
 const views=$$('.view');
 function route(){
   const name=(location.hash||'#home').slice(1).split('/')[0];
-  const id=views.some(v=>v.id===name)?name:'home';
+  /* Si el hash apunta a un elemento dentro de una vista (p. ej. #about-story), mostramos esa vista y bajamos hasta él */
+  const target=!views.some(v=>v.id===name)&&name?document.getElementById(name):null;
+  const host=target&&target.closest('.view');
+  const id=views.some(v=>v.id===name)?name:(host?host.id:'home');
   views.forEach(v=>v.classList.toggle('show',v.id===id));
   $$('#menu a').forEach(a=>a.classList.toggle('active',a.dataset.link===id));
   $('#menu').classList.remove('open');
   window.scrollTo(0,0);
+  if(host)requestAnimationFrame(()=>target.scrollIntoView({behavior:'smooth',block:'start'}));
   if(id==='marketplace')showList();
   if(id==='blog')closePost();
   startObservers();
@@ -196,10 +212,6 @@ function startObservers(){
   const v=$('.view.show');if(!v)return;
   $$('.rv,.reveal',v).forEach(el=>{el.classList.remove('on');io.observe(el)});
   $$('[data-count]:not([data-done])',v).forEach(el=>{el.dataset.done=1;io.observe(el)});
-}
-function setBase(k){
-  const o=k==='map'?'sat':'map';map.removeLayer(layers[o]);layers[k].addTo(map);
-  $('#m-map').classList.toggle('on',k==='map');$('#m-sat').classList.toggle('on',k==='sat');
 }
 
 /* ---------- MARKETPLACE ---------- */
@@ -250,7 +262,7 @@ function showDetail(p){
     $('#back').onclick=e=>{e.preventDefault();showList()};
     $$('.opts').forEach(o=>$$('button',o).forEach(b=>b.onclick=()=>{
       o.dataset.k==='size'?size=b.textContent:pat=b.textContent;draw(bad)}));
-    $('#qm').onclick=()=>{q=Math.max(1,q-1);draw(bad)};$('#qp').onclick=()=>{q++;draw(bad)};
+    $('#qm').onclick=()=>{q=Math.max(1,q-1);draw(bad)};$('#qp').onclick=()=>{q=Math.min(99,q+1);draw(bad)};
     const go=()=>{ if(!size||!pat){draw(true);return false}
       addToCart(p,size,pat,q);return true};
     if(!p.soldOut){
@@ -262,11 +274,26 @@ function showDetail(p){
 }
 
 /* ---------- CARRITO ---------- */
-let cart=JSON.parse(localStorage.getItem('reeva-cart')||'[]');
+/* El carrito vive en localStorage (el usuario puede editarlo): al cargar se re-valida contra el catálogo real
+   para que nadie pueda cambiar precios, nombres, tallas ni cantidades. */
+function loadCart(){
+  let raw;
+  try{raw=JSON.parse(localStorage.getItem('reeva-cart')||'[]')}catch{raw=[]}
+  if(!Array.isArray(raw))return[];
+  const out=[];
+  raw.forEach(i=>{
+    const p=PRODUCTS.find(x=>x.id===Number(i&&i.id));
+    if(!p||p.soldOut||!SIZES.includes(i.size)||!PATTERNS.includes(i.pat))return;
+    const q=Math.min(99,Math.max(1,Math.floor(Number(i.q))||1));
+    out.push({k:`${p.id}-${i.size}-${i.pat}`,id:p.id,name:p.name,price:p.price,img:p.img,size:i.size,pat:i.pat,q});
+  });
+  return out;
+}
+let cart=loadCart();
 function save(){localStorage.setItem('reeva-cart',JSON.stringify(cart));renderCart()}
 function addToCart(p,size,pat,q){
   const k=`${p.id}-${size}-${pat}`,it=cart.find(i=>i.k===k);
-  it?it.q+=q:cart.push({k,id:p.id,name:p.name,price:p.price,img:p.img,size,pat,q});save();
+  it?it.q=Math.min(99,it.q+q):cart.push({k,id:p.id,name:p.name,price:p.price,img:p.img,size,pat,q:Math.min(99,q)});save();
 }
 const total=()=>cart.reduce((s,i)=>s+i.price*i.q,0),units=()=>cart.reduce((s,i)=>s+i.q,0);
 function renderCart(){
@@ -277,7 +304,7 @@ function renderCart(){
     <div class="qty"><button data-n="${n}" data-d="-1">−</button><span>${i.q}</span><button data-n="${n}" data-d="1">+</button></div></div>
     <div style="text-align:right"><button data-del="${n}" aria-label="Remove item"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4.5h6V7"/><path d="M6.5 7l1 13h9l1-13"/><path d="M10 11v6M14 11v6"/></svg></button><div style="margin-top:1.6rem">${money(i.price*i.q)}</div></div></div>`).join('')
     :'<p class="empty">Your cart is empty.<br>Explore the Marketplace to find your next piece.</p>';
-  $$('#d-body [data-d]').forEach(b=>b.onclick=()=>{const i=cart[b.dataset.n];i.q+=+b.dataset.d;if(i.q<1)cart.splice(b.dataset.n,1);save()});
+  $$('#d-body [data-d]').forEach(b=>b.onclick=()=>{const i=cart[b.dataset.n];i.q=Math.min(99,i.q+ +b.dataset.d);if(i.q<1)cart.splice(b.dataset.n,1);save()});
   $$('#d-body [data-del]').forEach(b=>b.onclick=()=>{b.closest('.ci').classList.add('out');setTimeout(()=>{cart.splice(b.dataset.del,1);save()},220)});
 }
 function openDrawer(){$('#drawer').classList.add('open');$('#overlay').classList.add('on')}
@@ -390,6 +417,24 @@ document.body.insertAdjacentHTML('beforeend', `
       </label>
       <p class="err" id="e-name" hidden></p>
 
+      <fieldset class="role-pick" id="f-role" hidden>
+        <legend>I want to join as</legend>
+        <label class="role-card">
+          <input type="radio" name="role" value="client">
+          <span><b>Client</b><small>Discover pieces and share sketch ideas.</small></span>
+        </label>
+        <label class="role-card">
+          <input type="radio" name="role" value="designer">
+          <span><b>Designer</b><small>Create and sell upcycled pieces.</small></span>
+        </label>
+      </fieldset>
+      <p class="err" id="e-role" hidden></p>
+
+      <label id="f-studio" hidden>
+        Studio or brand name (optional)
+        <input type="text" id="a-studio" maxlength="60" autocomplete="organization">
+      </label>
+
       <label>
         Email
         <input type="email" id="a-email" autocomplete="email">
@@ -425,8 +470,101 @@ document.body.insertAdjacentHTML('beforeend', `
 </div>
 `);
 
+/* Ventana para elegir rol (usuarios de Google y cuentas anteriores sin rol) */
+document.body.insertAdjacentHTML('beforeend', `
+<div class="modal" id="role-modal" hidden>
+  <div class="modal-box auth" role="dialog" aria-modal="true" aria-labelledby="r-title">
+    <h3 id="r-title">One last step</h3>
+    <p class="auth-sub">How would you like to use REEVA? You can't change this later.</p>
+
+    <fieldset class="role-pick">
+      <legend class="sr-only">Account type</legend>
+      <label class="role-card">
+        <input type="radio" name="role2" value="client">
+        <span><b>Client</b><small>Discover pieces and share sketch ideas.</small></span>
+      </label>
+      <label class="role-card">
+        <input type="radio" name="role2" value="designer">
+        <span><b>Designer</b><small>Create and sell upcycled pieces.</small></span>
+      </label>
+    </fieldset>
+
+    <label id="r-studio-wrap" hidden>
+      Studio or brand name (optional)
+      <input type="text" id="r-studio" maxlength="60">
+    </label>
+
+    <p class="err form" id="r-error" hidden>Please choose an option.</p>
+
+    <button class="btn full" id="r-continue" type="button">Continue</button>
+    <button class="link" id="r-skip" type="button" style="display:block;margin:.4rem auto 0">Not now</button>
+  </div>
+</div>
+`);
+
+const selectedRole = (name) => {
+  const r = document.querySelector(`input[name="${name}"]:checked`);
+  return r ? r.value : '';
+};
+
+/* Devuelve { role, studio } o null si la persona prefiere decidir después */
+function askRole() {
+  return new Promise(resolve => {
+    const box = $('#role-modal');
+    $$('input[name="role2"]').forEach(r => { r.checked = false; });
+    $('#r-studio').value = '';
+    $('#r-studio-wrap').hidden = true;
+    $('#r-error').hidden = true;
+    box.hidden = false;
+
+    const done = (value) => {
+      box.hidden = true;
+      $('#r-continue').onclick = null;
+      $('#r-skip').onclick = null;
+      resolve(value);
+    };
+
+    $('#r-continue').onclick = () => {
+      const role = selectedRole('role2');
+      if (!role) { $('#r-error').hidden = false; return; }
+      done({ role, studio: $('#r-studio').value.trim() });
+    };
+    $('#r-skip').onclick = () => done(null);
+  });
+}
+
+$$('input[name="role2"]').forEach(r => {
+  r.addEventListener('change', () => {
+    $('#r-error').hidden = true;
+    $('#r-studio-wrap').hidden = selectedRole('role2') !== 'designer';
+  });
+});
+
+/* Asegura que la cuenta tenga rol. Devuelve el rol o null. */
+async function ensureRole(firebaseUser, preset) {
+  try {
+    const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
+    const current = snap.exists() ? snap.data().role : '';
+    if (current) return current;
+
+    let choice = preset && preset.role ? preset : null;
+    if (!choice) {
+      $('#modal').hidden = true;
+      choice = await askRole();
+    }
+    if (!choice) return null;
+
+    await saveUserProfile(firebaseUser, choice);
+    return choice.role;
+  } catch (error) {
+    console.error('Could not set account role:', error);
+    toast('We could not save your account type. Please try again.');
+    return null;
+  }
+}
+
 function clearErrors() {
-  ['name', 'email', 'pass', 'form'].forEach(k => {
+  ['name', 'email', 'pass', 'form', 'role'].forEach(k => {
     $('#e-' + k).hidden = true;
   });
 
@@ -458,6 +596,8 @@ function setMode(m) {
   $('#tab-login').classList.toggle('on', !signup);
   $('#tab-signup').classList.toggle('on', signup);
   $('#f-name').hidden = !signup;
+  $('#f-role').hidden = !signup;
+  $('#f-studio').hidden = !(signup && selectedRole('role') === 'designer');
 
   $('#m-title').textContent =
     signup ? 'Create your account' : 'Welcome back';
@@ -497,6 +637,13 @@ document.addEventListener('click', e => {
 $('#tab-login').onclick = () => setMode('login');
 $('#tab-signup').onclick = () => setMode('signup');
 
+$$('input[name="role"]').forEach(r => {
+  r.addEventListener('change', () => {
+    $('#e-role').hidden = true;
+    $('#f-studio').hidden = !(mode === 'signup' && selectedRole('role') === 'designer');
+  });
+});
+
 $('#m-close').onclick = () => {
   $('#modal').hidden = true;
 };
@@ -518,6 +665,7 @@ menu.hidden = true;
 menu.innerHTML = `
   <p class="um-name"></p>
   <p class="um-mail"></p>
+  <p class="um-role" hidden></p>
 <a href="profile.html" id="um-profile">My profile ↗</a>
   <button type="button" id="um-out">Log out</button>
 `;
@@ -539,6 +687,9 @@ function renderUser() {
     button.setAttribute('aria-label', 'Account');
     $('.um-name').textContent = user.name || '';
     $('.um-mail').textContent = user.email || '';
+    const roleLabel = { client: 'Client', designer: 'Designer' }[user.role] || '';
+    $('.um-role').textContent = roleLabel;
+    $('.um-role').hidden = !roleLabel;
   } else {
     button.innerHTML = LOGIN_ICON;
     button.setAttribute('aria-label', 'Log in');
@@ -568,8 +719,11 @@ onAuthStateChanged(auth, firebaseUser => {
 
   if (firebaseUser) {
     getDoc(doc(db, 'users', firebaseUser.uid)).then(snap => {
-      const custom = snap.exists() ? snap.data().photo : '';
-      if (custom && user) { user.picture = custom; renderUser(); }
+      const data = snap.exists() ? snap.data() : {};
+      let changed = false;
+      if (data.photo && user) { user.picture = data.photo; changed = true; }
+      if (data.role && user) { user.role = data.role; changed = true; }
+      if (changed) renderUser();
     }).catch(() => {});
   }
 
@@ -580,8 +734,7 @@ if ($('#blog-post') && !$('#blog-post').hidden) {
 
 function finishLogin(u) {
   user = u;
-
-  localStorage.setItem(SESSION_KEY, JSON.stringify(u));
+  /* Firebase ya conserva la sesión; no guardamos correo ni foto extra en localStorage. */
 
   $('#modal').hidden = true;
   renderUser();
@@ -635,6 +788,14 @@ $('#auth').onsubmit = async e => {
     invalid = true;
   }
 
+  const chosenRole = mode === 'signup' ? selectedRole('role') : '';
+  const studio = mode === 'signup' ? $('#a-studio').value.trim() : '';
+
+  if (mode === 'signup' && !chosenRole) {
+    fieldError('role', 'Please choose how you want to join.');
+    invalid = true;
+  }
+
   if (!/^\S+@\S+\.\S+$/.test(email)) {
     fieldError('email', 'Enter a valid email address.');
     invalid = true;
@@ -669,17 +830,28 @@ $('#auth').onsubmit = async e => {
     }
 
     const firebaseUser = credential.user;
-    
-try {
-  await saveUserProfile(firebaseUser);
-} catch (error) {
-  console.error('Could not save user profile:', error);
-}
+
+    try {
+      await saveUserProfile(
+        firebaseUser,
+        chosenRole ? { role: chosenRole, studio } : {}
+      );
+    } catch (error) {
+      console.error('Could not save user profile:', error);
+    }
+
+    /* Cuentas anteriores sin rol: se les pide elegir uno al iniciar sesión */
+    const role = await ensureRole(
+      firebaseUser,
+      chosenRole ? { role: chosenRole, studio } : null
+    );
+
     finishLogin({
       name: firebaseUser.displayName || name || firebaseUser.email,
       email: firebaseUser.email || email,
       picture: firebaseUser.photoURL || '',
-      provider: firebaseUser.providerData[0]?.providerId || 'password'
+      provider: firebaseUser.providerData[0]?.providerId || 'password',
+      role: role || ''
     });
 
   } catch (error) {
@@ -735,11 +907,14 @@ try {
   console.error('Could not save Google user profile:', error);
 }
 
-finishLogin({
+    const role = await ensureRole(firebaseUser, null);
+
+    finishLogin({
       name: firebaseUser.displayName || firebaseUser.email || 'User',
       email: firebaseUser.email || '',
       picture: firebaseUser.photoURL || '',
-      provider: 'google.com'
+      provider: 'google.com',
+      role: role || ''
     });
 
   } catch (error) {
