@@ -565,7 +565,14 @@ onAuthStateChanged(auth, firebaseUser => {
   }
 
   renderUser();
-  
+
+  if (firebaseUser) {
+    getDoc(doc(db, 'users', firebaseUser.uid)).then(snap => {
+      const custom = snap.exists() ? snap.data().photo : '';
+      if (custom && user) { user.picture = custom; renderUser(); }
+    }).catch(() => {});
+  }
+
 if ($('#blog-post') && !$('#blog-post').hidden) {
   renderComments();
 }
