@@ -23,7 +23,9 @@ import {
   onSnapshot,
   updateDoc,
   deleteDoc,
-  getDocs
+  getDocs,
+  orderBy,
+  limit
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
 import {
@@ -85,6 +87,24 @@ async function saveUserProfile(firebaseUser, extra = {}) {
   }
 
   await setDoc(userRef, profile, { merge: true });
+
+  /* Cuando se asigna el rol de diseñador, se crea su perfil público (sin correo) para que aparezca en el buscador */
+  if (profile.role === 'designer') {
+    try {
+      const name = String(profile.name || 'Designer').slice(0, 60);
+      await setDoc(doc(db, 'publicProfiles', firebaseUser.uid), {
+        uid: firebaseUser.uid,
+        name,
+        nameLower: name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim().slice(0, 60),
+        role: 'designer',
+        studio: String(profile.designerProfile?.studio || '').slice(0, 60),
+        bio: '', location: '', link: '', interests: [], thumb: '',
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('Could not create public profile:', error);
+    }
+  }
 }
 /* Si algo falla en el JavaScript, muestra el error en una franja roja arriba de la página */
 window.addEventListener('error',e=>{
@@ -191,7 +211,9 @@ const POSTS=[
 /* ---------- ROUTER ---------- */
 const views=$$('.view');
 function route(){
-  const name=(location.hash||'#home').slice(1).split('/')[0];
+  const hashParts=(location.hash||'#home').slice(1).split('/');
+  const name=hashParts[0];
+  openAfterLoad=null;
   /* Si el hash apunta a un elemento dentro de una vista (p. ej. #about-story), mostramos esa vista y bajamos hasta él */
   const target=!views.some(v=>v.id===name)&&name?document.getElementById(name):null;
   const host=target&&target.closest('.view');
@@ -201,7 +223,15 @@ function route(){
   $('#menu').classList.remove('open');
   window.scrollTo(0,0);
   if(host)requestAnimationFrame(()=>target.scrollIntoView({behavior:'smooth',block:'start'}));
-  if(id==='marketplace'){showList();loadPublishedDesigns()}
+  if(id==='marketplace'){
+    showList();loadPublishedDesigns();
+    /* Enlace directo a una prenda: #marketplace/d:ID (lo usan las páginas públicas de los diseñadores) */
+    if(hashParts[1]){
+      let want='';try{want=decodeURIComponent(hashParts[1])}catch{}
+      const p=isDesignId(want)?findProduct(want):null;
+      if(p)showDetail(p);else if(designsLoading&&isDesignId(want))openAfterLoad=want;
+    }
+  }
   if(id==='blog')closePost();
   startObservers();
 }
@@ -253,7 +283,7 @@ function renderGrid(){
   $$('.card').forEach(c=>c.onclick=()=>{const p=findProduct(c.dataset.id);if(p)showDetail(p)});
 }
 $('#sort').onchange=renderGrid;
-function showList(){$('#mk-list').hidden=false;$('#mk-detail').hidden=true;renderChips();renderGrid()}
+function showList(){$('#mk-list').hidden=false;$('#mk-detail').hidden=true;renderChips();renderGrid();renderNewArrivals();searchAccounts()}
 function showDetail(p){
   let size=p.isDesign?ONE_SIZE:null,pat=p.isDesign?'':null,q=1;
   /* Si la prenda es del propio diseñador, no la compra: se le indica dónde gestionarla */
@@ -262,7 +292,7 @@ function showDetail(p){
   const draw=(bad)=>{
     box.innerHTML=`<p class="crumbs"><a href="#marketplace" id="back">‹ Back to products</a></p>
     <div class="detail"><img src="${escH(imgOf(p))}" alt="${escH(p.name)}"><div>
-      <h2>${escH(p.name)}</h2>${p.designer?`<p class="by">Designed by <b>${escH(p.designer)}</b></p>`:''}<p class="small">${p.old?`<s>${money(p.old)}</s> `:''}${money(p.price)}</p>
+      <h2>${escH(p.name)}</h2>${p.designer?`<p class="by">Designed by <b>${p.ownerUid?`<a href="u.html?u=${encodeURIComponent(p.ownerUid)}">${escH(p.designer)}</a>`:escH(p.designer)}</b></p>`:''}<p class="small">${p.old?`<s>${money(p.old)}</s> `:''}${money(p.price)}</p>
       ${p.isDesign?'':`<p class="small" style="margin-top:1rem">Size *</p>
       <div class="opts ${bad&&!size?'bad':''}" data-k="size">${SIZES.map(s=>`<button class="${s===size?'on':''}">${s}</button>`).join('')}${bad&&!size?'<em>⊘ Choose a size</em>':''}</div>
       <p class="small">Pattern *</p>
@@ -325,10 +355,11 @@ const total=()=>cart.reduce((s,i)=>s+i.price*i.q,0),units=()=>cart.reduce((s,i)=
 const variantText=(i,sep)=>i.size===ONE_SIZE?escH(ONE_SIZE):`Size: ${escH(i.size)}${sep}Pattern: ${escH(i.pat)}`;
 
 /* Descarga las prendas publicadas por diseñadores y las suma al catálogo */
-let designsLoadedAt=0;
+let designsLoadedAt=0,designsLoading=false,openAfterLoad=null;
 async function loadPublishedDesigns(){
   if(Date.now()-designsLoadedAt<60000)return;   // no repetir la consulta en cada visita
   designsLoadedAt=Date.now();
+  designsLoading=true;
   try{
     const snap=await getDocs(query(collection(db,'designs'),where('published','==',true)));
     const list=snap.docs.map(d=>({id:d.id,...d.data()}))
@@ -346,10 +377,13 @@ async function loadPublishedDesigns(){
       ownerUid:String(d.ownerUid||'')
     }));
     syncCartWithCatalog();
-    if($('#marketplace').classList.contains('show')&&!$('#mk-list').hidden)renderGrid();
+    if($('#marketplace').classList.contains('show')&&!$('#mk-list').hidden){renderGrid();renderNewArrivals()}
+    if(openAfterLoad){const p=findProduct(openAfterLoad);openAfterLoad=null;if(p&&$('#marketplace').classList.contains('show'))showDetail(p)}
   }catch(error){
     console.error('Could not load designer pieces:',error);
     designsLoadedAt=0;
+  }finally{
+    designsLoading=false;
   }
 }
 
@@ -364,6 +398,63 @@ function syncCartWithCatalog(){
     return true;
   });
   changed?save():renderCart();
+}
+
+/* ---------- NOVEDADES + BUSCADOR DE CUENTAS (marketplace) ---------- */
+/* Todo lo que viene de Firestore (nombres, estudios, fotos) es contenido de usuarios: siempre escH()/safeImg(). */
+function renderNewArrivals(){
+  const box=$('#mk-strip');if(!box)return;
+  const l=[...DESIGNS].sort((a,b)=>b.order-a.order).slice(0,8);
+  box.innerHTML=l.length?l.map(p=>`<article class="mk-mini" data-id="${escH(p.id)}" tabindex="0" role="button" aria-label="${escH(p.name)}">
+      <img src="${escH(imgOf(p))}" alt="" loading="lazy"><b>${escH(p.name)}</b>
+      <span>By ${escH(p.designer)}</span><span class="pr">${money(p.price)}</span></article>`).join('')
+    :'<p class="small">New pieces from our designers will appear here soon.</p>';
+  $$('.mk-mini',box).forEach(c=>{
+    const open=()=>{const p=findProduct(c.dataset.id);if(p)showDetail(p)};
+    c.onclick=open;
+    c.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open()}};
+  });
+}
+
+let ACCOUNTS=null,accountsAt=0,acctRole='all';
+const normText=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+async function loadAccounts(){
+  if(ACCOUNTS&&Date.now()-accountsAt<60000)return ACCOUNTS;
+  const snap=await getDocs(query(collection(db,'publicProfiles'),orderBy('nameLower'),limit(100)));
+  ACCOUNTS=snap.docs.map(d=>({id:d.id,...d.data()}));
+  accountsAt=Date.now();
+  return ACCOUNTS;
+}
+async function searchAccounts(){
+  const out=$('#acct-results'),input=$('#acct-q');if(!out||!input)return;
+  const q=normText(input.value);
+  try{
+    const all=await loadAccounts();
+    const l=all.filter(a=>
+      /^[A-Za-z0-9]{1,40}$/.test(String(a.uid||''))&&
+      (acctRole==='all'||a.role===acctRole)&&
+      (!q||normText(a.name).includes(q)||normText(a.studio).includes(q))
+    ).slice(0,12);
+    out.innerHTML=l.length?l.map(a=>{
+      const th=safeImg(a.thumb),who=a.role==='designer'?'Designer':'Member';
+      return `<a class="acct" href="u.html?u=${encodeURIComponent(a.uid)}">
+        ${th?`<img class="acct-av" src="${escH(th)}" alt="">`:`<span class="acct-av">${escH((a.name||'?')[0].toUpperCase())}</span>`}
+        <span class="acct-info"><b>${escH(a.name)}</b><small>${who}${a.studio?' · '+escH(a.studio):''}</small></span></a>`;
+    }).join(''):`<p class="small">${all.length?'No profiles match your search.':'No public profiles yet.'}</p>`;
+  }catch(error){
+    console.error('Could not search profiles:',error);
+    out.innerHTML='<p class="small">We could not load profiles right now. Please try again.</p>';
+  }
+}
+if($('#acct-form')){
+  let acctTimer;
+  $('#acct-form').onsubmit=e=>{e.preventDefault();searchAccounts()};
+  $('#acct-q').oninput=()=>{clearTimeout(acctTimer);acctTimer=setTimeout(searchAccounts,250)};
+  $$('#acct-filter button').forEach(b=>b.onclick=()=>{
+    acctRole=b.dataset.role;
+    $$('#acct-filter button').forEach(x=>x.classList.toggle('on',x===b));
+    searchAccounts();
+  });
 }
 function renderCart(){
   $('#cart-count').textContent=units();$('#d-items').textContent=`(${units()} ${units()===1?'item':'items'})`;

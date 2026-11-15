@@ -57,6 +57,7 @@ const linkInput = $("#profile-link");
 const bioInput = $("#profile-bio");
 const bioCounter = $("#bio-counter");
 const interestPicker = $("#interest-picker");
+const publicCheck = $("#profile-public");
 
 const nameHeading = $("#profile-name");
 const emailText = $("#profile-email");
@@ -353,6 +354,7 @@ function openProfileEditor() {
   bannerPos.value = currentProfile.bannerPos ?? 50;
   bioCounter.textContent = `${bioInput.value.length} / 300`;
   selectedInterests = Array.isArray(currentProfile.interests) ? [...currentProfile.interests] : [];
+  publicCheck.checked = isProfilePublic();
 
   renderInterestPicker();
   refreshEditorPreviews();
@@ -361,6 +363,72 @@ function openProfileEditor() {
   profileEditor.hidden = false;
   syncCatalog(false);
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ---------- Public profile (what the marketplace search shows) ---------- */
+/* Designers are public by default (they sell); clients only if they choose to be. */
+function isProfilePublic() {
+  if (typeof currentProfile.isPublic === "boolean") return currentProfile.isPublic;
+  return currentProfile.role === "designer";
+}
+
+function nameKey(s) {
+  return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim().slice(0, 60);
+}
+
+/* Small square thumbnail of the profile photo, so search results stay light */
+async function makeThumb(src) {
+  if (!safeImage(src)) return "";
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = reject;
+      i.src = src;
+    });
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 160;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, 160, 160);
+    const size = Math.min(img.width, img.height);
+    ctx.drawImage(img, (img.width - size) / 2, (img.height - size) / 2, size, size, 0, 0, 160, 160);
+    const out = encode(canvas, 28000);
+    return out.length <= 28000 ? out : "";
+  } catch {
+    return "";
+  }
+}
+
+async function syncPublicProfile(onlyIfMissing = false) {
+  if (!currentUser || !["client", "designer"].includes(currentProfile.role)) return;
+  const ref = doc(db, "publicProfiles", currentUser.uid);
+  const pub = isProfilePublic();
+  try {
+    if (!pub) {
+      if (!onlyIfMissing) await deleteDoc(ref);
+      return;
+    }
+    if (onlyIfMissing && (await getDoc(ref)).exists()) return;
+
+    const name = (currentProfile.name || currentUser.displayName || "REEVA Member").slice(0, 60);
+    const link = safeUrl(currentProfile.link || "");
+    await setDoc(ref, {
+      uid: currentUser.uid,
+      name,
+      nameLower: nameKey(name),
+      role: currentProfile.role,
+      studio: currentProfile.role === "designer" ? (currentProfile.designerProfile?.studio || "").slice(0, 60) : "",
+      bio: (currentProfile.bio || "").slice(0, 300),
+      location: (currentProfile.location || "").slice(0, 60),
+      link: link.slice(0, 300),
+      interests: Array.isArray(currentProfile.interests) ? currentProfile.interests.slice(0, 5) : [],
+      thumb: await makeThumb(currentProfile.photo || ""),
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error("Public profile sync failed:", error);
+  }
 }
 
 /* ---------- Load ---------- */
@@ -378,6 +446,7 @@ async function loadProfile(firebaseUser) {
     renderProfile();
     openProfileView();
     showStatus("");
+    syncPublicProfile(true); // accounts created before public profiles existed get theirs automatically
   } catch (error) {
     console.error("Could not load profile:", error);
     currentProfile = {};
@@ -486,6 +555,7 @@ function designImageMessage(err) {
 }
 
 function syncCatalog(viewing) {
+  syncSketches(viewing);
   const allowed = !!currentUser && currentProfile.role === "designer";
   catalogCard.hidden = !(viewing && allowed);
   if (!allowed) {
@@ -710,6 +780,268 @@ designForm.addEventListener("submit", async (event) => {
   }
 });
 
+/* ---------- Client sketches ---------- */
+const MAX_SKETCH_IMAGE = 250000; // characters of the compressed data URL (Firestore rules allow 300000)
+
+const skCard = $("#sketches");
+const skListWrap = $("#sk-list-wrap");
+const skList = $("#sk-list");
+const skEmpty = $("#sk-empty");
+const skListStatus = $("#sk-list-status");
+const skAdd = $("#sk-add");
+const skForm = $("#sk-form");
+const skFormTitle = $("#sk-form-title");
+const skPreview = $("#sk-preview");
+const skPreviewImg = $("#sk-preview-img");
+const skImageFile = $("#sk-image-file");
+const skImagePick = $("#sk-image-pick");
+const skImageRemove = $("#sk-image-remove");
+const skTitle = $("#sk-title");
+const skNote = $("#sk-note");
+const skNoteCounter = $("#sk-note-counter");
+const skShared = $("#sk-shared");
+const skSave = $("#sk-save");
+const skCancel = $("#sk-cancel");
+const skStatus = $("#sk-status");
+
+let sketches = [];
+let sketchesUid = null;       // uid whose sketches are currently loaded
+let editingSketch = null;     // sketch being edited (null = new)
+let pendingSketchImage;       // undefined = unchanged, "" = removed, string = new image
+
+/* Keep the whole drawing (no cropping), limit its size and compress it */
+async function processSketchImage(file) {
+  if (!file.type.startsWith("image/")) throw new Error("not-image");
+  if (file.size > 15 * 1024 * 1024) throw new Error("too-big");
+
+  const img = await loadImage(file);
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  let scale = Math.min(1, 1000 / Math.max(img.width, img.height));
+  let out = "";
+  for (let i = 0; i < 5; i++) {
+    canvas.width = Math.max(1, Math.round(img.width * scale));
+    canvas.height = Math.max(1, Math.round(img.height * scale));
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    out = encode(canvas, MAX_SKETCH_IMAGE);
+    if (out.length <= MAX_SKETCH_IMAGE) break;
+    scale *= 0.8;
+  }
+  if (out.length > MAX_SKETCH_IMAGE) throw new Error("too-heavy");
+  return out;
+}
+
+function syncSketches(viewing) {
+  const allowed = !!currentUser && currentProfile.role === "client";
+  skCard.hidden = !(viewing && allowed);
+  if (!allowed) {
+    sketches = [];
+    sketchesUid = null;
+    closeSketchForm();
+    return;
+  }
+  if (viewing && sketchesUid !== currentUser.uid) loadSketches();
+}
+
+async function loadSketches() {
+  const uid = currentUser.uid;
+  sketchesUid = uid;
+  setMsg(skListStatus, "Loading your sketches...");
+  try {
+    const snap = await getDocs(query(collection(db, "sketches"), where("ownerUid", "==", uid)));
+    if (!currentUser || currentUser.uid !== uid) return;
+    sketches = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    sketches.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+    setMsg(skListStatus, "");
+  } catch (error) {
+    console.error("Could not load sketches:", error);
+    sketchesUid = null;
+    sketches = [];
+    setMsg(skListStatus, "Could not load your sketches. Check your connection and Firestore rules.", true);
+  }
+  renderSketches();
+}
+
+function renderSketches() {
+  skList.replaceChildren();
+  skEmpty.hidden = sketches.length > 0;
+
+  sketches.forEach((s) => {
+    const card = el("article", "pf-design");
+
+    const imgBox = el("div", "pf-design-img");
+    const src = safeImage(s.image);
+    if (src) {
+      const img = document.createElement("img");
+      img.src = src;
+      img.alt = s.title || "Sketch";
+      imgBox.append(img);
+    } else {
+      imgBox.append(el("span", "noimg", "No image"));
+    }
+    imgBox.append(el("span", "pf-badge" + (s.shared ? " live" : ""), s.shared ? "Shared" : "Private"));
+
+    const body = el("div", "pf-design-body");
+    body.append(el("h3", "pf-design-name", s.title || "Untitled"));
+    if (s.note) body.append(el("p", "pf-design-meta", s.note.length > 90 ? s.note.slice(0, 90) + "…" : s.note));
+
+    const actions = el("div", "pf-design-actions");
+    const editBtn = el("button", "pf-btn small ghost", "Edit");
+    const shareBtn = el("button", "pf-btn small ghost", s.shared ? "Make private" : "Share");
+    const delBtn = el("button", "pf-btn small danger", "Delete");
+    [editBtn, shareBtn, delBtn].forEach((b) => (b.type = "button"));
+
+    editBtn.addEventListener("click", () => openSketchForm(s));
+    shareBtn.addEventListener("click", () => toggleSketchShared(s, shareBtn));
+    delBtn.addEventListener("click", () => removeSketch(s, delBtn));
+
+    actions.append(editBtn, shareBtn, delBtn);
+    body.append(actions);
+    card.append(imgBox, body);
+    skList.append(card);
+  });
+}
+
+async function toggleSketchShared(s, btn) {
+  btn.disabled = true;
+  try {
+    await updateDoc(doc(db, "sketches", s.id), { shared: !s.shared, updatedAt: serverTimestamp() });
+    s.shared = !s.shared;
+    setMsg(skListStatus, s.shared ? "Sketch shared with designers." : "Sketch is now private.");
+    renderSketches();
+  } catch (error) {
+    console.error("Could not update sketch:", error);
+    setMsg(skListStatus, "Could not update this sketch. Please try again.", true);
+    btn.disabled = false;
+  }
+}
+
+async function removeSketch(s, btn) {
+  if (!confirm(`Delete "${s.title || "this sketch"}"? This can't be undone.`)) return;
+  btn.disabled = true;
+  try {
+    await deleteDoc(doc(db, "sketches", s.id));
+    sketches = sketches.filter((x) => x.id !== s.id);
+    setMsg(skListStatus, "Sketch deleted.");
+    renderSketches();
+  } catch (error) {
+    console.error("Could not delete sketch:", error);
+    setMsg(skListStatus, "Could not delete this sketch. Please try again.", true);
+    btn.disabled = false;
+  }
+}
+
+function refreshSketchPreview() {
+  const image = pendingSketchImage !== undefined ? pendingSketchImage : (editingSketch?.image || "");
+  const src = safeImage(image);
+  if (src) {
+    skPreviewImg.src = src;
+    skPreview.classList.remove("empty");
+  } else {
+    skPreviewImg.removeAttribute("src");
+    skPreview.classList.add("empty");
+  }
+}
+
+function openSketchForm(s = null) {
+  editingSketch = s;
+  pendingSketchImage = undefined;
+  skFormTitle.textContent = s ? "EDIT SKETCH" : "NEW SKETCH";
+  skTitle.value = s?.title || "";
+  skNote.value = s?.note || "";
+  skNoteCounter.textContent = `${skNote.value.length} / 1000`;
+  skShared.checked = !!s?.shared;
+  setMsg(skStatus, "");
+  refreshSketchPreview();
+
+  skListWrap.hidden = true;
+  skAdd.hidden = true;
+  skForm.hidden = false;
+  skForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function closeSketchForm() {
+  editingSketch = null;
+  pendingSketchImage = undefined;
+  skForm.hidden = true;
+  skListWrap.hidden = false;
+  skAdd.hidden = false;
+}
+
+skAdd.addEventListener("click", () => openSketchForm(null));
+skCancel.addEventListener("click", closeSketchForm);
+skImagePick.addEventListener("click", () => skImageFile.click());
+skImageRemove.addEventListener("click", () => {
+  pendingSketchImage = "";
+  refreshSketchPreview();
+});
+skNote.addEventListener("input", () => {
+  skNoteCounter.textContent = `${skNote.value.length} / 1000`;
+});
+
+skImageFile.addEventListener("change", async () => {
+  const file = skImageFile.files?.[0];
+  skImageFile.value = "";
+  if (!file) return;
+  setMsg(skStatus, "Processing your image...");
+  try {
+    pendingSketchImage = await processSketchImage(file);
+    refreshSketchPreview();
+    setMsg(skStatus, "Image ready. Don't forget to save the sketch.");
+  } catch (err) {
+    setMsg(skStatus, designImageMessage(err), true);
+  }
+});
+
+skForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!currentUser || currentProfile.role !== "client") {
+    setMsg(skStatus, "Only client accounts can upload sketches.", true);
+    return;
+  }
+
+  const title = skTitle.value.trim();
+  const note = skNote.value.trim();
+  const image = safeImage(pendingSketchImage !== undefined ? pendingSketchImage : (editingSketch?.image || ""));
+  const shared = skShared.checked;
+
+  if (title.length < 2) return setMsg(skStatus, "Please give your sketch a title (at least 2 characters).", true);
+  if (!image) return setMsg(skStatus, "Please upload an image of your sketch.", true);
+
+  const data = {
+    ownerUid: currentUser.uid,
+    ownerName: (currentProfile.name || currentUser.displayName || "Client").slice(0, 60),
+    title,
+    note,
+    image,
+    shared,
+    updatedAt: serverTimestamp()
+  };
+
+  skSave.disabled = true;
+  setMsg(skStatus, "Saving your sketch...");
+
+  try {
+    if (editingSketch) {
+      await updateDoc(doc(db, "sketches", editingSketch.id), data);
+    } else {
+      await addDoc(collection(db, "sketches"), { ...data, createdAt: serverTimestamp() });
+    }
+    closeSketchForm();
+    sketchesUid = null;
+    await loadSketches();
+    setMsg(skListStatus, "Your sketch has been saved.");
+  } catch (error) {
+    console.error("Could not save sketch:", error);
+    setMsg(skStatus, "Could not save this sketch. Check your connection and Firestore rules.", true);
+  } finally {
+    skSave.disabled = false;
+  }
+});
+
 /* ---------- Events ---------- */
 editButton.addEventListener("click", openProfileEditor);
 cancelButton.addEventListener("click", openProfileView);
@@ -821,6 +1153,7 @@ form.addEventListener("submit", async (event) => {
       link,
       interests: selectedInterests,
       bio,
+      isPublic: publicCheck.checked,
       provider: currentUser.providerData[0]?.providerId || "password",
       updatedAt: serverTimestamp()
     };
@@ -828,6 +1161,7 @@ form.addEventListener("submit", async (event) => {
     await setDoc(doc(db, "users", currentUser.uid), data, { merge: true });
 
     currentProfile = { ...currentProfile, ...data };
+    await syncPublicProfile();
     renderProfile();
     openProfileView();
     showStatus("Your changes have been saved.");
