@@ -1470,6 +1470,13 @@ textarea:focus{outline:0;border-color:var(--teal);background:#fff}
 .um-role{display:inline-block;margin:0 0 .8rem;padding:.2rem .7rem;border-radius:99px;background:var(--cream-2);border:1px solid var(--line);color:var(--teal-d);font-size:.72rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
 .um-role[hidden]{display:none}
 
+/* ---------- DESIGNER PIECES IN THE MARKETPLACE ---------- */
+.card .by{font-size:.78rem;opacity:.75;margin-bottom:.2rem}
+.detail .by{font-size:.95rem;margin:.35rem 0 .5rem;opacity:.85}
+.detail .by b{color:var(--red);font-family:var(--display)}
+.own-note{margin:1rem 0;padding:.9rem 1.1rem;border:1.5px dashed var(--line);border-radius:14px;background:var(--cream-2)}
+.own-note a{color:var(--red);font-weight:600}
+
 @media(max-width:420px){
   #modal .role-pick,#role-modal .role-pick{grid-template-columns:minmax(0,1fr)}
 }

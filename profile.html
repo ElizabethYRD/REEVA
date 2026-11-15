@@ -521,6 +521,41 @@ button.chip[aria-pressed="true"]{background:var(--teal-d);border-color:var(--tea
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media (max-width:560px){.pf-head .avatar{width:100px;height:100px;margin-top:-50px}.pf-actions{width:100%}.pf-actions .pf-btn{flex:1}}
 
+/* ===== DESIGNER CATALOG ===== */
+.pf-catalog{margin-top:24px;padding:clamp(20px,4vw,36px)}
+.pf-catalog-head{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:8px}
+.pf-catalog-head .form-description{margin-bottom:0;max-width:46ch}
+.pf-label{display:block;margin-bottom:9px;color:var(--deep);font-size:.78rem;font-weight:700}
+.pf-empty{margin:18px 0;padding:26px;border:1.5px dashed var(--line);border-radius:var(--r);text-align:center;color:#566b66;font-size:.88rem}
+.pf-designs{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:18px;margin-top:22px}
+.pf-design{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);background:#fffdf8;overflow:hidden}
+.pf-design-img{position:relative;aspect-ratio:4/5;background:var(--sand);overflow:hidden}
+.pf-design-img img{display:block;width:100%;height:100%;object-fit:cover}
+.pf-design-img .noimg{position:absolute;inset:0;display:grid;place-items:center;color:#7b8278;font-size:.75rem}
+.pf-badge{position:absolute;top:10px;left:10px;padding:4px 11px;border-radius:99px;font-size:.66rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;background:var(--cream);color:var(--teal-d)}
+.pf-badge.live{background:var(--teal-d);color:#fff}
+.pf-design-body{display:flex;flex-direction:column;gap:4px;padding:14px 14px 16px;flex:1}
+.pf-design-name{margin:0;color:var(--teal-d);font-family:var(--display);font-weight:700;font-size:1rem;line-height:1.25;overflow-wrap:anywhere}
+.pf-design-meta{margin:0;color:#687a76;font-size:.76rem}
+.pf-design-price{margin:2px 0 0;color:var(--red);font-weight:700;font-size:.92rem}
+.pf-design-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:12px}
+.pf-design-actions .pf-btn.small{min-height:34px;padding:6px 12px;font-size:.62rem}
+.pf-btn.danger{background:transparent;color:var(--red);border:1.5px solid var(--red)}
+.pf-btn.danger:hover:not(:disabled){background:var(--red);color:#fff}
+.pf-design-photo{display:flex;flex-wrap:wrap;align-items:center;gap:18px;margin:0 0 24px}
+.pf-design-preview{position:relative;width:128px;aspect-ratio:4/5;border-radius:14px;overflow:hidden;background:var(--sand);border:1px solid var(--line)}
+.pf-design-preview img{position:relative;z-index:1;display:block;width:100%;height:100%;object-fit:cover}
+.pf-design-preview.empty img{display:none}
+.pf-design-preview span{position:absolute;inset:0;display:grid;place-items:center;color:#7b8278;font-size:.7rem;font-weight:700;letter-spacing:.1em}
+.pf-design-preview:not(.empty) span{display:none}
+.pf-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.form-group select{display:block;width:100%;padding:14px 15px;border:1px solid var(--line);border-radius:14px;outline:none;background:#fffdf8;color:var(--deep);font-size:.88rem}
+.form-group select:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(44,127,153,.13)}
+.pf-check{display:flex;align-items:center;gap:10px;margin:0 0 22px;color:var(--deep);font-size:.85rem;font-weight:700;cursor:pointer}
+.pf-check input{width:18px;height:18px;accent-color:var(--teal)}
+.pf-check small{font-weight:400;color:#7b8278}
+@media (max-width:560px){.pf-two{grid-template-columns:minmax(0,1fr)}.pf-catalog-head .pf-btn{width:100%}}
+
 </style>
 </head>
 
@@ -657,6 +692,78 @@ button.chip[aria-pressed="true"]{background:var(--teal-d);border-color:var(--tea
       </div>
 
       <p class="profile-status" id="editor-status" role="status" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <!-- ========== DESIGNER CATALOG (only visible for designer accounts) ========== -->
+  <section class="pf-card pf-catalog" id="catalog" hidden>
+    <div class="pf-catalog-head">
+      <div>
+        <span class="form-label-top">MY COLLECTION</span>
+        <h2 class="form-heading">Your pieces</h2>
+        <p class="form-description">Create your own catalog. Drafts stay private; published pieces can appear in the marketplace.</p>
+      </div>
+      <button class="pf-btn" type="button" id="design-add">Add a piece <span aria-hidden="true">+</span></button>
+    </div>
+
+    <!-- LIST -->
+    <div id="design-list-wrap">
+      <p class="pf-empty" id="design-empty" hidden>You haven't added any pieces yet. Start with your first design.</p>
+      <div class="pf-designs" id="design-list"></div>
+      <p class="profile-status" id="design-list-status" role="status" aria-live="polite"></p>
+    </div>
+
+    <!-- ADD / EDIT -->
+    <form id="design-form" novalidate hidden>
+      <h3 class="pf-section-title" id="design-form-title" style="margin-top:0">NEW PIECE</h3>
+
+      <label class="pf-label">PHOTO</label>
+      <div class="pf-design-photo">
+        <div class="pf-design-preview empty" id="design-preview">
+          <img id="design-preview-img" alt="Preview of your piece">
+          <span>4 : 5</span>
+        </div>
+        <div>
+          <div class="pf-media-row" style="margin-top:0">
+            <button class="pf-btn small" type="button" id="design-image-pick">Upload photo</button>
+            <button class="pf-btn small ghost" type="button" id="design-image-remove">Remove</button>
+          </div>
+          <span class="field-hint">Vertical photos work best. We crop it to 4:5 and compress it for you.</span>
+        </div>
+        <input class="sr-only" id="design-image-file" type="file" accept="image/*" tabindex="-1">
+      </div>
+
+      <div class="form-group">
+        <label for="design-name">NAME</label>
+        <input id="design-name" type="text" maxlength="100" placeholder="Patchwork denim jacket">
+      </div>
+
+      <div class="pf-two">
+        <div class="form-group">
+          <label for="design-price">PRICE (B/.)</label>
+          <input id="design-price" type="number" min="0" max="10000" step="0.01" inputmode="decimal" placeholder="25.00">
+        </div>
+        <div class="form-group">
+          <label for="design-category">CATEGORY</label>
+          <select id="design-category"></select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="design-desc">DESCRIPTION <span class="pf-counter" id="design-desc-counter">0 / 1000</span></label>
+        <textarea id="design-desc" maxlength="1000" placeholder="Tell the story of this piece: materials, technique, what it was before..."></textarea>
+      </div>
+
+      <label class="pf-check">
+        <input type="checkbox" id="design-published">
+        <span>Publish this piece <small>(needs a photo)</small></span>
+      </label>
+
+      <div class="pf-row-btns">
+        <button class="save-button" type="submit" id="design-save">SAVE PIECE <span aria-hidden="true">↗</span></button>
+        <button class="back-link" type="button" id="design-cancel">CANCEL</button>
+      </div>
+      <p class="profile-status" id="design-status" role="status" aria-live="polite"></p>
     </form>
   </section>
 </main>

@@ -22,7 +22,8 @@ import {
   where,
   onSnapshot,
   updateDoc,
-  deleteDoc
+  deleteDoc,
+  getDocs
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
 import {
@@ -142,6 +143,17 @@ const PRODUCTS=[
   desc:'Midi skirt made with the patchwork technique, joining scraps of classic men\'s shirt fabrics. An exclusive piece with a fluid drape that celebrates creative reuse.'}
 ];
 const SIZES=['S','L'],PATTERNS=['Stripes','Checks','Plain'];
+
+/* Prendas publicadas por diseñadores (vienen de Firestore, colección "designs").
+   TODO lo que escribe un diseñador es contenido no confiable: siempre se pasa por escH() antes de mostrarlo. */
+const ONE_SIZE='One of a kind';
+const DESIGNS=[];
+const escH=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const allProducts=()=>[...PRODUCTS,...DESIGNS];
+const findProduct=id=>allProducts().find(p=>String(p.id)===String(id));
+const isDesignId=id=>/^d:[A-Za-z0-9]{1,40}$/.test(String(id));
+const safeImg=s=>typeof s==='string'&&/^data:image\/(jpeg|png|webp);base64,/.test(s)?s:'';
+const imgOf=p=>!p?'':(p.data?safeImg(p.data):(p.img?IMG_DIR+p.img:''));
 const POSTS=[
  {t:'Upcycling: Turning Old Clothes into...',full:'Upcycling: Turning Old Clothes into Fashion Treasures',x:'Fast fashion has led to an increase in the amount of clothing...',img:'blog1.jpg',a:'Ana Torres',d:'4 Aug',
   body:`<p class="small">Fast fashion has led to a huge increase in the amount of clothing we throw away. Upcycling offers a creative answer: instead of discarding a garment, we reimagine it as something new and more valuable.</p>
@@ -189,7 +201,7 @@ function route(){
   $('#menu').classList.remove('open');
   window.scrollTo(0,0);
   if(host)requestAnimationFrame(()=>target.scrollIntoView({behavior:'smooth',block:'start'}));
-  if(id==='marketplace')showList();
+  if(id==='marketplace'){showList();loadPublishedDesigns()}
   if(id==='blog')closePost();
   startObservers();
 }
@@ -231,41 +243,46 @@ const SORTERS={
 };
 PRODUCTS.forEach((p,i)=>p.order=i);
 function renderGrid(){
-  const l=PRODUCTS.filter(p=>cat===CATS[0]||p.cat===cat).sort(SORTERS[$('#sort').value]||SORTERS.rec);
+  const l=allProducts().filter(p=>cat===CATS[0]||p.cat===cat).sort(SORTERS[$('#sort').value]||SORTERS.rec);
   $('#count').textContent=l.length+' products';
-  $('#grid').innerHTML=l.map(p=>`<div class="card" data-id="${p.id}">
-    <img src="${IMG_DIR}${p.img}" alt="${p.name}" loading="lazy"><div>${p.name}</div>
+  $('#grid').innerHTML=l.map(p=>`<div class="card" data-id="${escH(p.id)}">
+    <img src="${escH(imgOf(p))}" alt="${escH(p.name)}" loading="lazy"><div>${escH(p.name)}</div>
+    ${p.designer?`<div class="by">By ${escH(p.designer)}</div>`:''}
     <div>${p.old?`<s>${money(p.old)}</s>`:''}${money(p.price)}</div>
     ${p.soldOut?'<button class="add" disabled>Sold out</button>':'<button class="add">+ Add to cart</button>'}</div>`).join('');
-  $$('.card').forEach(c=>c.onclick=()=>showDetail(PRODUCTS.find(x=>x.id==c.dataset.id)));
+  $$('.card').forEach(c=>c.onclick=()=>{const p=findProduct(c.dataset.id);if(p)showDetail(p)});
 }
 $('#sort').onchange=renderGrid;
 function showList(){$('#mk-list').hidden=false;$('#mk-detail').hidden=true;renderChips();renderGrid()}
 function showDetail(p){
-  let size=null,pat=null,q=1;
+  let size=p.isDesign?ONE_SIZE:null,pat=p.isDesign?'':null,q=1;
+  /* Si la prenda es del propio diseñador, no la compra: se le indica dónde gestionarla */
+  const mine=!!(p.isDesign&&auth.currentUser&&auth.currentUser.uid===p.ownerUid);
   const box=$('#mk-detail');$('#mk-list').hidden=true;box.hidden=false;window.scrollTo(0,0);
   const draw=(bad)=>{
     box.innerHTML=`<p class="crumbs"><a href="#marketplace" id="back">‹ Back to products</a></p>
-    <div class="detail"><img src="${IMG_DIR}${p.img}" alt="${p.name}"><div>
-      <h2>${p.name}</h2><p class="small">${p.old?`<s>${money(p.old)}</s> `:''}${money(p.price)}</p>
-      <p class="small" style="margin-top:1rem">Size *</p>
+    <div class="detail"><img src="${escH(imgOf(p))}" alt="${escH(p.name)}"><div>
+      <h2>${escH(p.name)}</h2>${p.designer?`<p class="by">Designed by <b>${escH(p.designer)}</b></p>`:''}<p class="small">${p.old?`<s>${money(p.old)}</s> `:''}${money(p.price)}</p>
+      ${p.isDesign?'':`<p class="small" style="margin-top:1rem">Size *</p>
       <div class="opts ${bad&&!size?'bad':''}" data-k="size">${SIZES.map(s=>`<button class="${s===size?'on':''}">${s}</button>`).join('')}${bad&&!size?'<em>⊘ Choose a size</em>':''}</div>
       <p class="small">Pattern *</p>
-      <div class="opts ${bad&&!pat?'bad':''}" data-k="pat">${PATTERNS.map(s=>`<button class="${s===pat?'on':''}">${s}</button>`).join('')}${bad&&!pat?'<em>⊘ Choose a pattern</em>':''}</div>
+      <div class="opts ${bad&&!pat?'bad':''}" data-k="pat">${PATTERNS.map(s=>`<button class="${s===pat?'on':''}">${s}</button>`).join('')}${bad&&!pat?'<em>⊘ Choose a pattern</em>':''}</div>`}
       <p class="small">Quantity *</p>
       <div class="qty"><button id="qm">−</button><span>${q}</span><button id="qp">+</button></div>
-      ${p.soldOut
+      ${mine
+        ?'<p class="small own-note">This is your piece. Manage it from <a href="profile.html">My profile</a>.</p>'
+        :p.soldOut
         ?'<button class="btn" id="sold" disabled style="opacity:.5;cursor:not-allowed">Sold out</button>'
         :'<button class="btn" id="add">Add to cart</button><button class="btn teal" id="buy">Buy now</button>'}
-      <p class="small" style="margin-top:1rem">${p.desc||'Unique piece created from reused materials by emerging designers.'}</p>
+      <p class="small" style="margin-top:1rem">${escH(p.desc||'Unique piece created from reused materials by emerging designers.')}</p>
     </div></div>`;
     $('#back').onclick=e=>{e.preventDefault();showList()};
     $$('.opts').forEach(o=>$$('button',o).forEach(b=>b.onclick=()=>{
       o.dataset.k==='size'?size=b.textContent:pat=b.textContent;draw(bad)}));
     $('#qm').onclick=()=>{q=Math.max(1,q-1);draw(bad)};$('#qp').onclick=()=>{q=Math.min(99,q+1);draw(bad)};
-    const go=()=>{ if(!size||!pat){draw(true);return false}
+    const go=()=>{ if(!p.isDesign&&(!size||!pat)){draw(true);return false}
       addToCart(p,size,pat,q);return true};
-    if(!p.soldOut){
+    if(!p.soldOut&&!mine){
       $('#add').onclick=()=>{if(go())openDrawer()};
       $('#buy').onclick=()=>{if(go())openCheckout()};
     }
@@ -282,9 +299,17 @@ function loadCart(){
   if(!Array.isArray(raw))return[];
   const out=[];
   raw.forEach(i=>{
-    const p=PRODUCTS.find(x=>x.id===Number(i&&i.id));
-    if(!p||p.soldOut||!SIZES.includes(i.size)||!PATTERNS.includes(i.pat))return;
+    if(!i||typeof i!=='object')return;
     const q=Math.min(99,Math.max(1,Math.floor(Number(i.q))||1));
+    /* Prendas de diseñadores: aún no se ha cargado el catálogo, así que se aceptan con datos saneados
+       y se re-validan contra Firestore apenas llega (syncCartWithCatalog). */
+    if(isDesignId(i.id)){
+      out.push({k:`${i.id}-${ONE_SIZE}-`,id:i.id,name:String(i.name||'').slice(0,100),
+        price:Math.min(10000,Math.max(0,Number(i.price)||0)),img:'',size:ONE_SIZE,pat:'',q});
+      return;
+    }
+    const p=PRODUCTS.find(x=>x.id===Number(i.id));
+    if(!p||p.soldOut||!SIZES.includes(i.size)||!PATTERNS.includes(i.pat))return;
     out.push({k:`${p.id}-${i.size}-${i.pat}`,id:p.id,name:p.name,price:p.price,img:p.img,size:i.size,pat:i.pat,q});
   });
   return out;
@@ -293,14 +318,58 @@ let cart=loadCart();
 function save(){localStorage.setItem('reeva-cart',JSON.stringify(cart));renderCart()}
 function addToCart(p,size,pat,q){
   const k=`${p.id}-${size}-${pat}`,it=cart.find(i=>i.k===k);
-  it?it.q=Math.min(99,it.q+q):cart.push({k,id:p.id,name:p.name,price:p.price,img:p.img,size,pat,q:Math.min(99,q)});save();
+  it?it.q=Math.min(99,it.q+q):cart.push({k,id:p.id,name:p.name,price:p.price,img:p.isDesign?'':p.img,size,pat,q:Math.min(99,q)});save();
 }
 const total=()=>cart.reduce((s,i)=>s+i.price*i.q,0),units=()=>cart.reduce((s,i)=>s+i.q,0);
+/* Texto de talla/estampado: las piezas de diseñador son únicas y no llevan ni talla ni patrón */
+const variantText=(i,sep)=>i.size===ONE_SIZE?escH(ONE_SIZE):`Size: ${escH(i.size)}${sep}Pattern: ${escH(i.pat)}`;
+
+/* Descarga las prendas publicadas por diseñadores y las suma al catálogo */
+let designsLoadedAt=0;
+async function loadPublishedDesigns(){
+  if(Date.now()-designsLoadedAt<60000)return;   // no repetir la consulta en cada visita
+  designsLoadedAt=Date.now();
+  try{
+    const snap=await getDocs(query(collection(db,'designs'),where('published','==',true)));
+    const list=snap.docs.map(d=>({id:d.id,...d.data()}))
+      .filter(d=>typeof d.name==='string'&&safeImg(d.image)&&Number.isFinite(Number(d.price)))
+      .sort((a,b)=>(a.createdAt?.toMillis?.()||0)-(b.createdAt?.toMillis?.()||0));
+    DESIGNS.length=0;
+    list.forEach((d,n)=>DESIGNS.push({
+      id:'d:'+d.id,isDesign:true,order:PRODUCTS.length+n,
+      name:d.name.slice(0,100),
+      price:Math.min(10000,Math.max(0,Number(d.price))),
+      cat:CATS.includes(d.category)?d.category:'Upcycled Clothing',
+      data:d.image,
+      desc:String(d.desc||'').slice(0,1000),
+      designer:String(d.ownerName||'').slice(0,60),
+      ownerUid:String(d.ownerUid||'')
+    }));
+    syncCartWithCatalog();
+    if($('#marketplace').classList.contains('show')&&!$('#mk-list').hidden)renderGrid();
+  }catch(error){
+    console.error('Could not load designer pieces:',error);
+    designsLoadedAt=0;
+  }
+}
+
+/* Quita del carrito las piezas que ya no existen y corrige nombre/precio con los datos reales */
+function syncCartWithCatalog(){
+  let changed=false;
+  cart=cart.filter(i=>{
+    if(!isDesignId(i.id))return true;
+    const p=DESIGNS.find(x=>x.id===i.id);
+    if(!p){changed=true;return false}
+    if(i.name!==p.name||i.price!==p.price){i.name=p.name;i.price=p.price;changed=true}
+    return true;
+  });
+  changed?save():renderCart();
+}
 function renderCart(){
   $('#cart-count').textContent=units();$('#d-items').textContent=`(${units()} ${units()===1?'item':'items'})`;
   $('#d-total').textContent=money(total());
-  $('#d-body').innerHTML=cart.length?cart.map((i,n)=>`<div class="ci"><img src="${IMG_DIR}${i.img}" alt="">
-    <div><div>${i.name}</div><div>Size: ${i.size}<br>Pattern: ${i.pat}</div>
+  $('#d-body').innerHTML=cart.length?cart.map((i,n)=>`<div class="ci"><img src="${escH(imgOf(findProduct(i.id)||i))}" alt="">
+    <div><div>${escH(i.name)}</div><div>${variantText(i,'<br>')}</div>
     <div class="qty"><button data-n="${n}" data-d="-1">−</button><span>${i.q}</span><button data-n="${n}" data-d="1">+</button></div></div>
     <div style="text-align:right"><button data-del="${n}" aria-label="Remove item"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4.5h6V7"/><path d="M6.5 7l1 13h9l1-13"/><path d="M10 11v6M14 11v6"/></svg></button><div style="margin-top:1.6rem">${money(i.price*i.q)}</div></div></div>`).join('')
     :'<p class="empty">Your cart is empty.<br>Explore the Marketplace to find your next piece.</p>';
@@ -317,7 +386,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape'){closeAll();$('#checkout').hi
 /* ---------- CHECKOUT ---------- */
 function openCheckout(){
   closeAll();
-  $('#co-items').innerHTML=cart.map(i=>`<div class="co-it"><span>${i.q}× ${i.name}<br><small>Size: ${i.size} · Pattern: ${i.pat}</small></span><span>${money(i.price*i.q)}</span></div>`).join('')||'<p class="small">No items.</p>';
+  $('#co-items').innerHTML=cart.map(i=>`<div class="co-it"><span>${i.q}× ${escH(i.name)}<br><small>${variantText(i,' · ')}</small></span><span>${money(i.price*i.q)}</span></div>`).join('')||'<p class="small">No items.</p>';
   ['#co-sub','#co-tot'].forEach(s=>$(s).textContent=money(total()));
   $('#checkout').hidden=false;
 }
@@ -1328,4 +1397,4 @@ $('#c-post').onclick = async () => {
 };
 
 /* ---------- INIT ---------- */
-renderCart();renderUser();route();
+renderCart();renderUser();route();loadPublishedDesigns();
