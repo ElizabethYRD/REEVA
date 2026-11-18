@@ -775,6 +775,21 @@ button.chip[aria-pressed="true"]{background:var(--teal-d);border-color:var(--tea
     </form>
   </section>
 
+  <!-- ========== CLIENT IDEAS (designers see sketches that clients chose to share) ========== -->
+  <section class="pf-card pf-catalog pf-sketch" id="ideas" hidden>
+    <div class="pf-catalog-head">
+      <div>
+        <span class="form-label-top">COMMUNITY</span>
+        <h2 class="form-heading">Client ideas</h2>
+        <p class="form-description">Sketches that clients chose to share with REEVA designers. Use them as inspiration for your next piece.</p>
+      </div>
+      <button class="pf-btn ghost" type="button" id="ideas-refresh">Refresh</button>
+    </div>
+    <p class="pf-empty" id="ideas-empty" hidden>No shared sketches yet. Check back soon.</p>
+    <div class="pf-designs" id="ideas-list"></div>
+    <p class="profile-status" id="ideas-status" role="status" aria-live="polite"></p>
+  </section>
+
   <!-- ========== CLIENT SKETCHES (only visible for client accounts) ========== -->
   <section class="pf-card pf-catalog pf-sketch" id="sketches" hidden>
     <div class="pf-catalog-head">

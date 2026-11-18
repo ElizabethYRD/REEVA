@@ -455,25 +455,23 @@
       <p class="crumbs">Home &nbsp;›&nbsp; All Products</p>
       <img class="mk-banner" src="reeva/Imagenes/banner-shop.jpg" alt="REEVA Marketplace">
 
-      <!-- NEW ARRIVALS + ACCOUNT SEARCH -->
+      <!-- SEARCH + NEW ARRIVALS -->
       <section class="mk-new" id="mk-new">
-        <div class="mk-new-block">
-          <h3>New arrivals</h3>
-          <p class="small">Fresh creations from REEVA designers.</p>
-          <div class="mk-strip" id="mk-strip"></div>
+        <form id="acct-form" class="mk-bar" role="search">
+          <input id="acct-q" type="search" placeholder="Search pieces, designers, members or sketches..." maxlength="60" autocomplete="off" aria-label="Search REEVA">
+          <button class="btn" type="submit">Search</button>
+        </form>
+        <div class="acct-filter" id="acct-filter" role="group" aria-label="Search filter">
+          <button type="button" class="on" data-filter="all">All</button>
+          <button type="button" data-filter="pieces">Pieces</button>
+          <button type="button" data-filter="designers">Designers</button>
+          <button type="button" data-filter="members">Members</button>
+          <button type="button" data-filter="sketches">Sketches</button>
         </div>
-        <div class="mk-new-block mk-search">
-          <h3>Find a designer or member</h3>
-          <form id="acct-form" role="search">
-            <input id="acct-q" type="search" placeholder="Search by name or studio..." maxlength="60" autocomplete="off" aria-label="Search profiles">
-            <button class="btn" type="submit">Search</button>
-          </form>
-          <div class="acct-filter" id="acct-filter">
-            <button type="button" class="on" data-role="all">All</button>
-            <button type="button" data-role="designer">Designers</button>
-            <button type="button" data-role="client">Members</button>
-          </div>
-          <div class="acct-results" id="acct-results"></div>
+        <div class="mk-people" id="acct-results" hidden></div>
+        <div class="mk-newstrip" id="mk-new-strip">
+          <h3>New arrivals</h3>
+          <div class="mk-strip" id="mk-strip"></div>
         </div>
       </section>
       <h2>All Products</h2>

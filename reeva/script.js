@@ -273,7 +273,7 @@ const SORTERS={
 };
 PRODUCTS.forEach((p,i)=>p.order=i);
 function renderGrid(){
-  const l=allProducts().filter(p=>cat===CATS[0]||p.cat===cat).sort(SORTERS[$('#sort').value]||SORTERS.rec);
+  const l=allProducts().filter(p=>(cat===CATS[0]||p.cat===cat)&&pieceMatches(p)).sort(SORTERS[$('#sort').value]||SORTERS.rec);
   $('#count').textContent=l.length+' products';
   $('#grid').innerHTML=l.map(p=>`<div class="card" data-id="${escH(p.id)}">
     <img src="${escH(imgOf(p))}" alt="${escH(p.name)}" loading="lazy"><div>${escH(p.name)}</div>
@@ -400,8 +400,8 @@ function syncCartWithCatalog(){
   changed?save():renderCart();
 }
 
-/* ---------- NOVEDADES + BUSCADOR DE CUENTAS (marketplace) ---------- */
-/* Todo lo que viene de Firestore (nombres, estudios, fotos) es contenido de usuarios: siempre escH()/safeImg(). */
+/* ---------- BUSCADOR ÚNICO (marketplace): prendas, diseñadores, miembros y bocetos compartidos ---------- */
+/* Todo lo que viene de Firestore (nombres, estudios, fotos, notas) es contenido de usuarios: siempre escH()/safeImg()/textContent. */
 function renderNewArrivals(){
   const box=$('#mk-strip');if(!box)return;
   const l=[...DESIGNS].sort((a,b)=>b.order-a.order).slice(0,8);
@@ -416,8 +416,16 @@ function renderNewArrivals(){
   });
 }
 
-let ACCOUNTS=null,accountsAt=0,acctRole='all';
+let ACCOUNTS=null,accountsAt=0,SKETCHES=null,sketchesAt=0,searchFilter='all',searchQ='',searchToken=0;
 const normText=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+const isDesignerUser=()=>!!(user&&user.role==='designer');
+
+/* Las prendas se filtran directamente en la cuadrícula del marketplace */
+function pieceMatches(p){
+  if(!searchQ)return true;
+  return normText(p.name).includes(searchQ)||normText(p.designer).includes(searchQ)||normText(p.cat).includes(searchQ);
+}
+
 async function loadAccounts(){
   if(ACCOUNTS&&Date.now()-accountsAt<60000)return ACCOUNTS;
   const snap=await getDocs(query(collection(db,'publicProfiles'),orderBy('nameLower'),limit(100)));
@@ -425,35 +433,114 @@ async function loadAccounts(){
   accountsAt=Date.now();
   return ACCOUNTS;
 }
-async function searchAccounts(){
-  const out=$('#acct-results'),input=$('#acct-q');if(!out||!input)return;
-  const q=normText(input.value);
-  try{
-    const all=await loadAccounts();
-    const l=all.filter(a=>
-      /^[A-Za-z0-9]{1,40}$/.test(String(a.uid||''))&&
-      (acctRole==='all'||a.role===acctRole)&&
-      (!q||normText(a.name).includes(q)||normText(a.studio).includes(q))
-    ).slice(0,12);
-    out.innerHTML=l.length?l.map(a=>{
-      const th=safeImg(a.thumb),who=a.role==='designer'?'Designer':'Member';
-      return `<a class="acct" href="u.html?u=${encodeURIComponent(a.uid)}">
-        ${th?`<img class="acct-av" src="${escH(th)}" alt="">`:`<span class="acct-av">${escH((a.name||'?')[0].toUpperCase())}</span>`}
-        <span class="acct-info"><b>${escH(a.name)}</b><small>${who}${a.studio?' · '+escH(a.studio):''}</small></span></a>`;
-    }).join(''):`<p class="small">${all.length?'No profiles match your search.':'No public profiles yet.'}</p>`;
-  }catch(error){
-    console.error('Could not search profiles:',error);
-    out.innerHTML='<p class="small">We could not load profiles right now. Please try again.</p>';
-  }
+/* Solo las cuentas Designer pueden leer bocetos (las reglas de Firestore devuelven solo los compartidos) */
+async function loadSharedSketches(){
+  if(SKETCHES&&Date.now()-sketchesAt<60000)return SKETCHES;
+  const snap=await getDocs(query(collection(db,'sketches'),where('shared','==',true)));
+  SKETCHES=snap.docs.map(d=>({id:d.id,...d.data()}))
+    .filter(s=>safeImg(s.image)&&typeof s.title==='string')
+    .sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0))
+    .slice(0,60);
+  sketchesAt=Date.now();
+  return SKETCHES;
 }
+
+function searchAccounts(){return runSearch()}
+function runSearch(){
+  const input=$('#acct-q');if(!input)return;
+  searchQ=normText(input.value);
+  const f=searchFilter,showPieces=f==='all'||f==='pieces';
+  ['#grid','.toolbar','#chips','#mk-list>h2'].forEach(s=>{const n=$(s);if(n)n.hidden=!showPieces});
+  const strip=$('#mk-new-strip');if(strip)strip.hidden=!!searchQ||!showPieces;
+  if(showPieces)renderGrid();
+  renderPeople();
+}
+
+async function renderPeople(){
+  const out=$('#acct-results');if(!out)return;
+  const f=searchFilter,q=searchQ,token=++searchToken;
+  if(f==='pieces'||(f==='all'&&!q)){out.hidden=true;out.replaceChildren();return}
+  const wantDes=f==='all'||f==='designers',wantMem=f==='all'||f==='members',wantSk=f==='all'||f==='sketches';
+  const cap=f==='all'?6:24;
+  let html='',any=false;
+  try{
+    if(wantDes||wantMem){
+      const all=await loadAccounts();
+      const match=a=>/^[A-Za-z0-9]{1,40}$/.test(String(a.uid||''))&&(!q||normText(a.name).includes(q)||normText(a.studio).includes(q));
+      const card=a=>{
+        const th=safeImg(a.thumb);
+        return `<a class="acct" href="u.html?u=${encodeURIComponent(a.uid)}">
+          ${th?`<img class="acct-av" src="${escH(th)}" alt="">`:`<span class="acct-av">${escH((a.name||'?')[0].toUpperCase())}</span>`}
+          <span class="acct-info"><b>${escH(a.name)}</b><small>${a.role==='designer'?'Designer':'Member'}${a.studio?' · '+escH(a.studio):''}</small></span></a>`;
+      };
+      [['designer','Designers',wantDes],['client','Members',wantMem]].forEach(([role,label,want])=>{
+        if(!want)return;
+        const l=all.filter(a=>a.role===role&&match(a)).slice(0,cap);
+        if(l.length){any=true;html+=`<h4 class="mk-sec">${label}</h4><div class="acct-grid">${l.map(card).join('')}</div>`}
+      });
+    }
+    if(wantSk){
+      if(isDesignerUser()){
+        const all=await loadSharedSketches();
+        const l=all.filter(s=>!q||normText(s.title).includes(q)||normText(s.note).includes(q)||normText(s.ownerName).includes(q)).slice(0,cap);
+        if(l.length){
+          any=true;
+          html+=`<h4 class="mk-sec">Client sketches</h4><div class="acct-grid">${l.map(s=>`<button type="button" class="sk-mini" data-sk="${escH(s.id)}">
+            <img src="${escH(safeImg(s.image))}" alt=""><span class="acct-info"><b>${escH(s.title)}</b><small>By ${escH(s.ownerName||'a member')}</small></span></button>`).join('')}</div>`;
+        }
+      }else if(f==='sketches'){
+        any=true;
+        html+=`<p class="mk-hint">Client sketches are shared with REEVA designers. ${user?'Switch to a designer account to see them.':'Log in with a designer account to see them.'}</p>`;
+      }
+    }
+  }catch(error){
+    console.error('Search failed:',error);
+    if(token!==searchToken)return;
+    out.hidden=false;out.innerHTML='<p class="mk-hint">We could not load results right now. Please try again.</p>';
+    return;
+  }
+  if(token!==searchToken)return;   // llegó una búsqueda más nueva
+  if(!any){
+    if(f==='all'){out.hidden=true;out.replaceChildren();return}   // en "All" no se muestra un panel vacío: ya se filtró la cuadrícula
+    html=`<p class="mk-hint">No results${q?' for "'+escH($('#acct-q').value.trim())+'"':''}.</p>`;
+  }
+  out.hidden=false;out.innerHTML=html;
+  $$('.sk-mini',out).forEach(b=>b.onclick=()=>openSketchView(b.dataset.sk));
+}
+
+/* Ventana para ver un boceto compartido (imagen y nota completas) */
+document.body.insertAdjacentHTML('beforeend',`
+<div class="modal" id="sk-modal" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="skm-title">
+    <button class="m-close" id="skm-close" type="button" aria-label="Close">✕</button>
+    <img id="skm-img" alt="">
+    <h3 id="skm-title"></h3>
+    <p class="auth-sub" id="skm-by"></p>
+    <p class="small note" id="skm-note"></p>
+  </div>
+</div>`);
+function openSketchView(id){
+  const s=(SKETCHES||[]).find(x=>x.id===id);if(!s)return;
+  $('#skm-img').src=safeImg(s.image);
+  $('#skm-img').alt=String(s.title||'').slice(0,100);
+  $('#skm-title').textContent=String(s.title||'').slice(0,100);
+  $('#skm-by').textContent='By '+String(s.ownerName||'a REEVA member').slice(0,60);
+  $('#skm-note').textContent=String(s.note||'').slice(0,1000);
+  $('#sk-modal').hidden=false;
+}
+const closeSketchView=()=>{$('#sk-modal').hidden=true};
+$('#skm-close').onclick=closeSketchView;
+$('#sk-modal').onclick=e=>{if(e.target.id==='sk-modal')closeSketchView()};
+addEventListener('keydown',e=>{if(e.key==='Escape')closeSketchView()});
+
 if($('#acct-form')){
   let acctTimer;
-  $('#acct-form').onsubmit=e=>{e.preventDefault();searchAccounts()};
-  $('#acct-q').oninput=()=>{clearTimeout(acctTimer);acctTimer=setTimeout(searchAccounts,250)};
+  $('#acct-form').onsubmit=e=>{e.preventDefault();runSearch()};
+  $('#acct-q').oninput=()=>{clearTimeout(acctTimer);acctTimer=setTimeout(runSearch,250)};
   $$('#acct-filter button').forEach(b=>b.onclick=()=>{
-    acctRole=b.dataset.role;
+    searchFilter=b.dataset.filter;
     $$('#acct-filter button').forEach(x=>x.classList.toggle('on',x===b));
-    searchAccounts();
+    runSearch();
   });
 }
 function renderCart(){

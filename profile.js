@@ -556,6 +556,7 @@ function designImageMessage(err) {
 
 function syncCatalog(viewing) {
   syncSketches(viewing);
+  syncIdeas(viewing);
   const allowed = !!currentUser && currentProfile.role === "designer";
   catalogCard.hidden = !(viewing && allowed);
   if (!allowed) {
@@ -1040,6 +1041,79 @@ skForm.addEventListener("submit", async (event) => {
   } finally {
     skSave.disabled = false;
   }
+});
+
+/* ---------- Designers: sketches that clients chose to share ---------- */
+const ideasCard = $("#ideas");
+const ideasList = $("#ideas-list");
+const ideasEmpty = $("#ideas-empty");
+const ideasStatus = $("#ideas-status");
+const ideasRefresh = $("#ideas-refresh");
+let ideasLoadedFor = null;
+
+function syncIdeas(viewing) {
+  const allowed = !!currentUser && currentProfile.role === "designer";
+  ideasCard.hidden = !(viewing && allowed);
+  if (!allowed) {
+    ideasLoadedFor = null;
+    return;
+  }
+  if (viewing && ideasLoadedFor !== currentUser.uid) loadIdeas();
+}
+
+async function loadIdeas() {
+  const uid = currentUser.uid;
+  ideasLoadedFor = uid;
+  setMsg(ideasStatus, "Loading client ideas...");
+  try {
+    /* The rules only return sketches with shared == true, and only to designer accounts */
+    const snap = await getDocs(query(collection(db, "sketches"), where("shared", "==", true)));
+    if (!currentUser || currentUser.uid !== uid) return;
+    const items = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((s) => safeImage(s.image) && typeof s.title === "string")
+      .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0))
+      .slice(0, 50);
+    setMsg(ideasStatus, "");
+    renderIdeas(items);
+  } catch (error) {
+    console.error("Could not load client ideas:", error);
+    ideasLoadedFor = null;
+    setMsg(ideasStatus, "Could not load client ideas. Check your connection and Firestore rules.", true);
+  }
+}
+
+function renderIdeas(items) {
+  ideasList.replaceChildren();
+  ideasEmpty.hidden = items.length > 0;
+
+  items.forEach((s) => {
+    const card = el("article", "pf-design");
+
+    const imgBox = el("div", "pf-design-img");
+    const img = document.createElement("img");
+    img.src = safeImage(s.image);
+    img.alt = s.title.slice(0, 100);
+    img.loading = "lazy";
+    imgBox.append(img);
+
+    const body = el("div", "pf-design-body");
+    body.append(el("h3", "pf-design-name", s.title.slice(0, 100)));
+    body.append(el("p", "pf-design-meta", "By " + String(s.ownerName || "a REEVA member").slice(0, 60)));
+    if (s.note) {
+      const note = el("p", "pf-design-meta", String(s.note).slice(0, 1000));
+      note.style.whiteSpace = "pre-line";
+      note.style.overflowWrap = "anywhere";
+      body.append(note);
+    }
+    card.append(imgBox, body);
+    ideasList.append(card);
+  });
+}
+
+ideasRefresh.addEventListener("click", () => {
+  ideasLoadedFor = null;
+  if (currentUser) loadIdeas();
 });
 
 /* ---------- Events ---------- */
