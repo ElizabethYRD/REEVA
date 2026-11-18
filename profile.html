@@ -556,6 +556,10 @@ button.chip[aria-pressed="true"]{background:var(--teal-d);border-color:var(--tea
 .pf-check small{font-weight:400;color:#7b8278}
 .pf-sketch .pf-design-img img{object-fit:contain;background:#fff}
 .pf-sketch .pf-design-preview img{object-fit:contain;background:#fff}
+
+/* Brand logo: same image and size as the main site header (no extra text next to it) */
+.logo img{display:block;width:auto;max-width:none;height:clamp(46px,4vw,62px);object-fit:contain}
+@media (max-width:430px){.logo img{width:auto;height:42px}}
 @media (max-width:560px){.pf-two{grid-template-columns:minmax(0,1fr)}.pf-catalog-head .pf-btn{width:100%}}
 
 </style>
@@ -566,8 +570,7 @@ button.chip[aria-pressed="true"]{background:var(--teal-d);border-color:var(--tea
 <header class="site-header">
  
 <a class="logo" href="./index.html" aria-label="REEVA Home">
-  <img src="reeva/Imagenes/LogoReeva.png" alt="REEVA logo">
-  <span>REEVA<sup>®</sup></span>
+  <img src="reeva/Imagenes/LogoReeva.png" alt="REEVA">
 </a>
   
 <a class="back-link" href="index.html">← Back to home</a>
@@ -578,9 +581,7 @@ button.chip[aria-pressed="true"]{background:var(--teal-d);border-color:var(--tea
 <main class="profile-main">
   <span class="eyebrow">YOUR REEVA SPACE</span>
 
-  <h1 class="page-heading">
-    Your story.<br><span>Your space.</span>
-  </h1>
+  <h1 class="page-heading">My profile</h1>
 
   <p class="page-intro">
     Your identity, your story, your place in a more circular

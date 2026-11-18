@@ -1428,10 +1428,16 @@ function closePost() {
   $('#blog-post').hidden = true;
 }
 
-$('[data-back]').onclick = event => {
+/* Tocar "Blog" en el menú mientras se lee un artículo también regresa a la lista (el hash no cambia, así que no hay evento) */
+$('#menu a[data-link="blog"]').addEventListener('click', () => {
+  if (!$('#blog-post').hidden) closePost();
+});
+
+$$('[data-back]').forEach(link => link.onclick = event => {
   event.preventDefault();
   closePost();
-};
+  window.scrollTo(0, 0);
+});
 
 $('#comment').onfocus = () => {
   $('#c-actions').hidden = false;

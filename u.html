@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile — REEVA</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --cream:#f8e6c8;--cream-2:#fbf0dc;--paper:#fffaf1;--sand:#efd9b0;--line:#e3cfa8;
+    --red:#c00d0d;--teal:#2c7f99;--teal-d:#1f6178;--sky:#a8c8dc;--deep:#295249;
+    --display:'Syne',sans-serif;--body:'Inter',sans-serif;--r:20px;--r-lg:32px;
+    --sh:0 10px 30px rgba(41,82,73,.10);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;min-height:100vh;background:var(--cream);color:var(--deep);font-family:var(--body);line-height:1.65;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+
+  .site-header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:20px clamp(1.2rem,4vw,3rem);border-bottom:1px solid var(--line)}
+  .logo{display:inline-flex;align-items:center;gap:10px;color:var(--teal-d);font-family:var(--display);font-size:1.5rem;font-weight:800;letter-spacing:-.06em}
+  .logo img{display:block;width:auto;height:clamp(46px,4vw,62px);object-fit:contain}
+  .back-link{display:inline-flex;align-items:center;gap:9px;color:var(--teal-d);font-size:.75rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;transition:color .2s,transform .2s}
+  .back-link:hover{color:var(--red);transform:translateX(-3px)}
+
+  main{width:min(1080px,calc(100% - 40px));margin:44px auto 80px}
+  .card{border:1px solid var(--line);border-radius:var(--r-lg);background:var(--paper);box-shadow:var(--sh);padding:clamp(22px,4vw,38px)}
+  .head{display:flex;flex-wrap:wrap;align-items:center;gap:22px}
+  .avatar{display:grid;place-items:center;width:112px;height:112px;flex:0 0 auto;overflow:hidden;border:5px solid var(--cream-2);border-radius:50%;background:var(--sky);color:var(--teal-d);font-family:var(--display);font-size:2.6rem;font-weight:800}
+  .avatar img{width:100%;height:100%;object-fit:cover}
+  h1{margin:0;color:var(--teal-d);font-family:var(--display);font-size:clamp(1.8rem,4vw,2.6rem);font-weight:800;letter-spacing:-.04em;line-height:1.1;overflow-wrap:anywhere}
+  .role{display:inline-block;margin-top:8px;padding:.2rem .8rem;border-radius:99px;background:var(--cream-2);border:1px solid var(--line);color:var(--teal-d);font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 20px;margin:20px 0 0;padding:0;list-style:none;color:#566b66;font-size:.85rem}
+  .meta a{color:var(--teal-d);font-weight:700;text-decoration:underline;text-underline-offset:3px}
+  .meta a:hover{color:var(--red)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+  .chip{padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:var(--cream-2);color:var(--teal-d);font-size:.75rem;font-weight:700}
+  .bio{margin:20px 0 0;max-width:62ch;color:#3d544e;font-size:.95rem;line-height:1.8;white-space:pre-line;overflow-wrap:anywhere}
+
+  h2{margin:42px 0 6px;color:var(--teal-d);font-family:var(--display);font-size:clamp(1.4rem,3vw,2rem);font-weight:800;letter-spacing:-.04em}
+  .sub{margin:0 0 20px;color:#687a76;font-size:.88rem}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:20px}
+  .piece{display:flex;flex-direction:column;gap:2px;transition:transform .3s}
+  .piece:hover{transform:translateY(-5px)}
+  .piece img{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:var(--r);background:#fff;margin-bottom:8px}
+  .piece b{font-family:var(--display);font-size:1rem;line-height:1.25;overflow-wrap:anywhere}
+  .piece small{color:#687a76;font-size:.76rem}
+  .piece .price{color:var(--red);font-weight:700;font-size:.92rem}
+  .empty,.state{margin:18px 0;padding:26px;border:1.5px dashed var(--line);border-radius:var(--r);text-align:center;color:#566b66;font-size:.9rem}
+  .state a{color:var(--red);font-weight:700}
+
+  .site-footer{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:25px clamp(1.2rem,4vw,3rem);border-top:1px solid var(--line);color:#667770;font-size:.72rem}
+  .site-footer strong{color:var(--teal-d);font-family:var(--display);letter-spacing:.04em}
+  @media (max-width:430px){.logo img{height:42px}.back-link{font-size:.65rem}}
+</style>
+</head>
+
+<body>
+
+<header class="site-header">
+  <a class="logo" href="./index.html" aria-label="REEVA Home">
+    <img src="reeva/Imagenes/LogoReeva.png" alt="REEVA">
+  </a>
+  <a class="back-link" href="index.html#marketplace">← Back to marketplace</a>
+</header>
+
+<main id="main">
+  <p class="state" id="state">Loading profile...</p>
+</main>
+
+<footer class="site-footer">
+  <span><strong>REEVA®</strong> — Transform your forgotten clothes.</span>
+</footer>
+
+<script type="module">
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, collection, query, where, getDocs
+} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDpBhZW9L8hKYwFR9kJycRSbi6nadZPJ9c",
+  authDomain: "reeva-9b01f.firebaseapp.com",
+  projectId: "reeva-9b01f",
+  storageBucket: "reeva-9b01f.firebasestorage.app",
+  messagingSenderId: "574458340001",
+  appId: "1:574458340001:web:572bffafb007be40fd86e0"
+};
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const main = document.getElementById("main");
+
+/* Everything below comes from other users: it is only ever inserted with textContent / safe attributes */
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
+}
+const safeImage = (s) => typeof s === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(s) ? s : "";
+function safeUrl(value) {
+  try {
+    const u = new URL(value);
+    return /^https?:$/.test(u.protocol) ? u.href : "";
+  } catch { return ""; }
+}
+function showState(html) {
+  main.replaceChildren();
+  const p = el("p", "state");
+  if (html.link) {
+    p.append(document.createTextNode(html.text + " "));
+    const a = el("a", "", html.link.label);
+    a.href = html.link.href;
+    p.append(a);
+  } else {
+    p.textContent = html.text;
+  }
+  main.append(p);
+}
+
+async function init() {
+  const uid = new URLSearchParams(location.search).get("u") || "";
+  if (!/^[A-Za-z0-9]{6,40}$/.test(uid)) {
+    return showState({ text: "This profile link is not valid.", link: { label: "Back to the marketplace", href: "index.html#marketplace" } });
+  }
+
+  let p;
+  try {
+    const snap = await getDoc(doc(db, "publicProfiles", uid));
+    if (!snap.exists()) {
+      return showState({ text: "This profile isn't public or doesn't exist.", link: { label: "Back to the marketplace", href: "index.html#marketplace" } });
+    }
+    p = snap.data();
+  } catch (error) {
+    console.error("Could not load profile:", error);
+    return showState({ text: "We could not load this profile right now. Please try again." });
+  }
+
+  const name = String(p.name || "REEVA Member").slice(0, 60);
+  const isDesigner = p.role === "designer";
+  document.title = name + " — REEVA";
+
+  main.replaceChildren();
+  const card = el("section", "card");
+
+  const head = el("div", "head");
+  const avatar = el("div", "avatar");
+  const thumb = safeImage(p.thumb);
+  if (thumb) {
+    const img = document.createElement("img");
+    img.src = thumb;
+    img.alt = "";
+    avatar.append(img);
+  } else {
+    avatar.textContent = (name[0] || "R").toUpperCase();
+  }
+  const titles = el("div");
+  titles.append(el("h1", "", name));
+  titles.append(el("span", "role", isDesigner ? "Designer" : "Member"));
+  head.append(avatar, titles);
+  card.append(head);
+
+  const meta = el("ul", "meta");
+  if (isDesigner && p.studio) meta.append(el("li", "", "🧵 " + String(p.studio).slice(0, 60)));
+  if (p.location) meta.append(el("li", "", "📍 " + String(p.location).slice(0, 60)));
+  const link = safeUrl(p.link || "");
+  if (link) {
+    const li = el("li");
+    const a = el("a", "", "🔗 " + new URL(link).hostname.replace(/^www\./, ""));
+    a.href = link;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    li.append(a);
+    meta.append(li);
+  }
+  if (meta.children.length) card.append(meta);
+
+  const tags = Array.isArray(p.interests) ? p.interests.slice(0, 5) : [];
+  if (tags.length) {
+    const chips = el("div", "chips");
+    tags.forEach((t) => chips.append(el("span", "chip", String(t).slice(0, 40))));
+    card.append(chips);
+  }
+  if (p.bio) card.append(el("p", "bio", String(p.bio).slice(0, 300)));
+  main.append(card);
+
+  if (!isDesigner) return;
+
+  /* Designer's published pieces */
+  main.append(el("h2", "", "Pieces by " + name));
+  main.append(el("p", "sub", "Click a piece to see it in the marketplace."));
+  const status = el("p", "state", "Loading pieces...");
+  main.append(status);
+
+  try {
+    const snap = await getDocs(query(collection(db, "designs"), where("ownerUid", "==", uid), where("published", "==", true)));
+    const pieces = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((d) => /^[A-Za-z0-9]{1,40}$/.test(d.id) && safeImage(d.image) && typeof d.name === "string")
+      .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+
+    if (!pieces.length) {
+      status.className = "empty";
+      status.textContent = "No published pieces yet.";
+      return;
+    }
+    const grid = el("div", "grid");
+    pieces.forEach((d) => {
+      const a = el("a", "piece");
+      a.href = "index.html#marketplace/" + encodeURIComponent("d:" + d.id);
+      const img = document.createElement("img");
+      img.src = safeImage(d.image);
+      img.alt = d.name.slice(0, 100);
+      img.loading = "lazy";
+      a.append(img, el("b", "", d.name.slice(0, 100)), el("small", "", String(d.category || "")));
+      a.append(el("span", "price", "B/. " + Number(d.price || 0).toFixed(2)));
+      grid.append(a);
+    });
+    status.replaceWith(grid);
+  } catch (error) {
+    console.error("Could not load pieces:", error);
+    status.textContent = "We could not load this designer's pieces right now.";
+  }
+}
+
+init();
+</script>
+</body>
+</html>

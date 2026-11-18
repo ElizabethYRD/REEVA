@@ -1507,6 +1507,13 @@ textarea:focus{outline:0;border-color:var(--teal);background:#fff}
 .acct-info small{font-size:.74rem;opacity:.8}
 @media(max-width:900px){.mk-new{grid-template-columns:minmax(0,1fr)}}
 
+/* ---------- BLOG: "ALL POSTS" ---------- */
+.blog-title{font-size:clamp(2rem,4vw,3.2rem);color:var(--red);margin-bottom:1.4rem}
+.back-posts{display:inline-flex;align-items:center;gap:.5rem;padding:.65rem 1.3rem;border:1.5px solid var(--red);border-radius:99px;color:var(--red);font-size:.9rem;font-weight:600;text-decoration:none;transition:background .25s,color .25s,transform .25s var(--ease)}
+.back-posts:hover{background:var(--red);color:#fff;transform:translateX(-3px)}
+#blog-post>.back-posts{margin-bottom:.4rem}
+.post-card .back-posts{margin-top:1.2rem}
+
 @media(max-width:420px){
   #modal .role-pick,#role-modal .role-pick{grid-template-columns:minmax(0,1fr)}
 }
